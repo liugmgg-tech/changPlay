@@ -372,7 +372,7 @@
   </style>
 </head>
 <body>
-  <h1 id="main-title" style="user-select: none;">运动查看</h1>
+  <h1 id="main-title" style="user-select: none;">运动查看 <span id="config-name" style="font-size: 14px; color: #999; margin-left: 8px;"></span></h1>
   
   <div class="tabs">
     <button class="tab active" onclick="switchTab('realtime')">实时状态</button>
@@ -414,8 +414,24 @@
   </div>
 
   <script>
-    const SUPABASE_URL = 'https://vilitaarloxpgjbqgjmz.supabase.co';
-    const SUPABASE_ANON_KEY = 'sb_publishable_-dlcp8B_dKge-fjN1wd2yQ_KUkhGreZ';
+    const CLOUD_CONFIG_ID = 2;  // 1=宁, 2=长
+    
+    const CLOUD_CONFIGS = {
+      1: {
+        name: '宁',
+        url: 'https://vilitaarloxpgjbqgjmz.supabase.co',
+        key: 'sb_publishable_-dlcp8B_dKge-fjN1wd2yQ_KUkhGreZ'
+      },
+      2: {
+        name: '长',
+        url: 'https://dvcvjyqydxqapghesxaw.supabase.co',
+        key: 'sb_publishable_JzvR-nqE9y4KSkSXnRMMlg_MZt7I0Yx'
+      }
+    };
+    
+    const CLOUD_CONFIG = CLOUD_CONFIGS[CLOUD_CONFIG_ID];
+    const SUPABASE_URL = CLOUD_CONFIG.url;
+    const SUPABASE_ANON_KEY = CLOUD_CONFIG.key;
     const POINTS_TO_YUAN = 100;
 
     const activityNames = {
@@ -1217,6 +1233,7 @@
 
     // 初始化
     async function init() {
+      document.getElementById('config-name').textContent = CLOUD_CONFIG.name;
       document.getElementById('realtime-content').innerHTML = '<div class="loading">加载中...</div>';
       await loadData();
       renderRealtime();
