@@ -1764,9 +1764,17 @@
       const template = cachedTemplates.find(t => t.task_type === taskType);
       if (!template) return;
       
+      const promptConfig = template.prompt_config || {};
+      const taskIntro = promptConfig.task_intro || '';
+      const tooFast = promptConfig.too_fast || '太快了，请慢一点';
+      const paused = promptConfig.paused || '请继续';
+      const inProgress = promptConfig.in_progress || '';
+      const completed = promptConfig.completed || '太好了，获得{points}积分';
+      const progress = promptConfig.progress || '';
+      
       const html = `
         <div class="modal show" id="template-modal" onclick="if(event.target===this)this.remove()">
-          <div class="modal-content" style="max-width: 500px;" onclick="event.stopPropagation()">
+          <div class="modal-content" style="max-width: 550px; max-height: 85vh; overflow-y: auto;" onclick="event.stopPropagation()">
             <div class="modal-title">编辑任务模板 - ${taskType}</div>
             <div style="margin-bottom: 12px;">
               <label>任务名称：</label>
@@ -1796,6 +1804,39 @@
               <label>暂停阈值（毫秒）：</label>
               <input type="number" id="template-pause-threshold" value="${template.pause_threshold || 0}" style="width: 100px; padding: 6px;">
             </div>
+            
+            <div style="border-top: 1px solid #eee; margin: 16px 0; padding-top: 12px;">
+              <div style="font-weight: 500; margin-bottom: 10px; cursor: pointer;" onclick="togglePromptConfig()">
+                📢 提示语配置 <span id="prompt-toggle-icon" style="font-size: 12px;">▼</span>
+              </div>
+              <div id="prompt-config-area">
+                <div style="margin-bottom: 10px;">
+                  <label style="font-size: 13px; color: #666;">任务说明 <span style="color: #999;">({duration}=时长, {count}=次数)</span>：</label><br>
+                  <textarea id="prompt-intro" style="width: 100%; height: 50px; padding: 6px; font-size: 13px;">${taskIntro}</textarea>
+                </div>
+                <div style="margin-bottom: 10px;">
+                  <label style="font-size: 13px; color: #666;">太快提示：</label><br>
+                  <input type="text" id="prompt-too-fast" value="${tooFast}" style="width: 100%; padding: 6px; font-size: 13px;">
+                </div>
+                <div style="margin-bottom: 10px;">
+                  <label style="font-size: 13px; color: #666;">暂停提示：</label><br>
+                  <input type="text" id="prompt-paused" value="${paused}" style="width: 100%; padding: 6px; font-size: 13px;">
+                </div>
+                <div style="margin-bottom: 10px;">
+                  <label style="font-size: 13px; color: #666;">进行中提示：</label><br>
+                  <input type="text" id="prompt-in-progress" value="${inProgress}" style="width: 100%; padding: 6px; font-size: 13px;">
+                </div>
+                <div style="margin-bottom: 10px;">
+                  <label style="font-size: 13px; color: #666;">完成提示 <span style="color: #999;">({points}=积分)</span>：</label><br>
+                  <input type="text" id="prompt-completed" value="${completed}" style="width: 100%; padding: 6px; font-size: 13px;">
+                </div>
+                <div style="margin-bottom: 10px;">
+                  <label style="font-size: 13px; color: #666;">进度提示 <span style="color: #999;">({current}=已进行, {remaining}=剩余)</span>：</label><br>
+                  <input type="text" id="prompt-progress" value="${progress}" style="width: 100%; padding: 6px; font-size: 13px;" placeholder="仅散步、摆手臂使用">
+                </div>
+              </div>
+            </div>
+            
             <div class="modal-buttons">
               <button class="modal-btn cancel" onclick="document.getElementById('template-modal').remove()">取消</button>
               <button class="modal-btn confirm" onclick="saveTemplate('${taskType}')">保存</button>
@@ -1806,7 +1847,28 @@
       document.body.insertAdjacentHTML('beforeend', html);
     }
     
+    function togglePromptConfig() {
+      const area = document.getElementById('prompt-config-area');
+      const icon = document.getElementById('prompt-toggle-icon');
+      if (area.style.display === 'none') {
+        area.style.display = 'block';
+        icon.textContent = '▼';
+      } else {
+        area.style.display = 'none';
+        icon.textContent = '▶';
+      }
+    }
+    
     async function saveTemplate(taskType) {
+      const promptConfig = {
+        task_intro: document.getElementById('prompt-intro').value.trim(),
+        too_fast: document.getElementById('prompt-too-fast').value.trim(),
+        paused: document.getElementById('prompt-paused').value.trim(),
+        in_progress: document.getElementById('prompt-in-progress').value.trim(),
+        completed: document.getElementById('prompt-completed').value.trim(),
+        progress: document.getElementById('prompt-progress').value.trim()
+      };
+      
       const data = {
         task_name: document.getElementById('template-name').value.trim(),
         duration: parseInt(document.getElementById('template-duration').value) || 0,
@@ -1814,7 +1876,8 @@
         points: parseInt(document.getElementById('template-points').value) || 0,
         max_speed: parseInt(document.getElementById('template-max-speed').value) || 0,
         min_interval: parseInt(document.getElementById('template-min-interval').value) || 0,
-        pause_threshold: parseInt(document.getElementById('template-pause-threshold').value) || 0
+        pause_threshold: parseInt(document.getElementById('template-pause-threshold').value) || 0,
+        prompt_config: promptConfig
       };
       
       try {
