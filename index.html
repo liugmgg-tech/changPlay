@@ -944,26 +944,6 @@
         </div>
         
         <div class="settings-section" style="margin-top: 20px;">
-          <div class="settings-title">绑定人员</div>
-          <div class="settings-warning" style="font-size: 12px;">
-            设置后请在App端点击"同步人员"以更新本地数据
-          </div>
-          <div style="margin: 10px 0;">
-            <label>人员1：</label>
-            <input type="text" id="person1-input" style="padding: 8px; width: 120px;" placeholder="姓名">
-          </div>
-          <div style="margin: 10px 0;">
-            <label>人员2：</label>
-            <input type="text" id="person2-input" style="padding: 8px; width: 120px;" placeholder="姓名">
-          </div>
-          <div style="margin: 10px 0;">
-            <label>人员3：</label>
-            <input type="text" id="person3-input" style="padding: 8px; width: 120px;" placeholder="姓名">
-          </div>
-          <button onclick="savePersons()" style="padding: 8px 16px;">保存人员</button>
-        </div>
-        
-        <div class="settings-section" style="margin-top: 20px;">
           <div class="settings-title">设备绑定管理</div>
           <div id="bind-status" style="margin: 10px 0; color: #666;">加载中...</div>
           <button class="clear-btn" style="background: #FF9800;" onclick="showUnbindModal()">🔓 解除设备绑定</button>
@@ -1781,84 +1761,6 @@
         } else {
           alert('保存失败');
         }
-      } catch (e) {
-        alert('操作失败：' + e.message);
-      }
-    }
-    
-    // 人员管理弹窗
-    async function showUserPersonsModal(userId) {
-      const userPersons = cachedData.persons.filter(p => p.user_id === userId);
-      
-      const html = `
-        <div class="modal show" id="persons-modal" onclick="if(event.target===this)this.remove()">
-          <div class="modal-content" style="max-width: 400px;" onclick="event.stopPropagation()">
-            <div class="modal-title">分账人员 - ${userId}</div>
-            <div id="persons-list">
-              ${[0, 1, 2].map(i => {
-                const p = userPersons.find(up => up.person_index === i);
-                return `
-                  <div style="margin-bottom: 8px;">
-                    <label>人员${i + 1}：</label>
-                    <input type="text" class="person-input" data-index="${i}" value="${p ? p.person_name : ''}" style="width: 150px; padding: 8px;" placeholder="姓名">
-                  </div>
-                `;
-              }).join('')}
-            </div>
-            <div class="modal-buttons">
-              <button class="modal-btn cancel" onclick="document.getElementById('persons-modal').remove()">取消</button>
-              <button class="modal-btn confirm" onclick="saveUserPersons('${userId}')">保存</button>
-            </div>
-          </div>
-        </div>
-      `;
-      document.body.insertAdjacentHTML('beforeend', html);
-    }
-    
-    async function saveUserPersons(userId) {
-      const inputs = document.querySelectorAll('.person-input');
-      const persons = [];
-      
-      inputs.forEach(input => {
-        const name = input.value.trim();
-        if (name) {
-          persons.push({
-            user_id: userId,
-            person_index: parseInt(input.dataset.index),
-            person_name: name
-          });
-        }
-      });
-      
-      try {
-        // 先删除旧数据
-        await fetch(`${SUPABASE_URL}/rest/v1/persons?user_id=eq.${userId}`, {
-          method: 'DELETE',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Prefer': 'return=minimal'
-          }
-        });
-        
-        // 插入新数据
-        for (const p of persons) {
-          await fetch(`${SUPABASE_URL}/rest/v1/persons`, {
-            method: 'POST',
-            headers: {
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify(p)
-          });
-        }
-        
-        alert('保存成功！');
-        document.getElementById('persons-modal').remove();
-        await loadData();
-        renderAdminUsers();
       } catch (e) {
         alert('操作失败：' + e.message);
       }
