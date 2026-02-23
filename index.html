@@ -473,7 +473,6 @@
     const CLOUD_CONFIG = CLOUD_CONFIGS[CLOUD_CONFIG_ID];
     const SUPABASE_URL = CLOUD_CONFIG.url;
     const SUPABASE_ANON_KEY = CLOUD_CONFIG.key;
-    const POINTS_TO_YUAN = 100;
 
     const activityNames = {
       'walk': '散步',
@@ -548,8 +547,8 @@
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
     }
 
-    function pointsToMoney(points) {
-      return (points / POINTS_TO_YUAN).toFixed(1);
+    function pointsToMoney(points, pointsToYuan = 100) {
+      return (points / pointsToYuan).toFixed(2);
     }
 
     function addDays(dateStr, days) {
@@ -641,28 +640,38 @@
         const todayRecord = dailyRecords.find(r => r.user_id === user.id && r.date === today);
         const yesterdayRecord = dailyRecords.find(r => r.user_id === user.id && r.date === yesterday);
         const monthRecords = dailyRecords.filter(r => r.user_id === user.id && r.date >= monthStart && r.date <= today);
-        
+
         const todayPoints = todayRecord?.total_points || 0;
         const todayMorning = todayRecord?.morning_points || 0;
         const todayAfternoon = todayRecord?.afternoon_points || 0;
         const yesterdayPoints = yesterdayRecord?.total_points || 0;
         const monthPoints = monthRecords.reduce((sum, r) => sum + (r.total_points || 0), 0);
-        
+
         const morningStart = user.morning_start || '08:00';
         const morningEnd = user.morning_end || '11:30';
         const afternoonStart = user.afternoon_start || '14:00';
         const afternoonEnd = user.afternoon_end || '18:00';
-        
+
+        // 获取用户配置
+        const pointsToYuan = user.points_to_yuan || 100;
+        const morningMax = user.morning_max_points || 1500;
+        const afternoonMax = user.afternoon_max_points || 1500;
+        const showMoney = user.show_money !== false;
+
         const freshness = checkFreshness(status.updated_at);
         const isActive = status.status === 'active';
         const activityName = activityNames[status.current_activity] || status.current_activity;
         const elapsedMin = Math.floor((status.elapsed_seconds || 0) / 60);
-        const startedAt = isActive 
+        const startedAt = isActive
           ? (status.activity_started_at ? formatTime(status.activity_started_at) : null)
           : (status.updated_at ? formatTime(status.updated_at) : null);
-        
+
         const nowHour = new Date().getHours();
         const currentPeriod = nowHour < 12 ? '上午' : '下午';
+
+        // 计算进度百分比
+        const morningPercent = Math.min(100, Math.round(todayMorning / morningMax * 100));
+        const afternoonPercent = Math.min(100, Math.round(todayAfternoon / afternoonMax * 100));
 
         html += `
           <div class="user-card">
@@ -692,17 +701,17 @@
               <div class="stat-item">
                 <div class="stat-label">今日积分</div>
                 <div class="stat-value points">${todayPoints} 分</div>
-                <div class="stat-value money">${pointsToMoney(todayPoints)} 元</div>
+                ${showMoney ? `<div class="stat-value money">${pointsToMoney(todayPoints, pointsToYuan)} 元</div>` : ''}
               </div>
               <div class="stat-item">
                 <div class="stat-label">昨日积分</div>
                 <div class="stat-value">${yesterdayPoints} 分</div>
-                <div class="stat-value money">${pointsToMoney(yesterdayPoints)} 元</div>
+                ${showMoney ? `<div class="stat-value money">${pointsToMoney(yesterdayPoints, pointsToYuan)} 元</div>` : ''}
               </div>
               <div class="stat-item">
                 <div class="stat-label">当月积分</div>
                 <div class="stat-value points">${monthPoints} 分</div>
-                <div class="stat-value money">${pointsToMoney(monthPoints)} 元</div>
+                ${showMoney ? `<div class="stat-value money">${pointsToMoney(monthPoints, pointsToYuan)} 元</div>` : ''}
               </div>
               <div class="stat-item">
                 <div class="stat-label">当前时段</div>
@@ -710,13 +719,23 @@
               </div>
             </div>
 
-            <div class="info-row">
-              <span class="info-label">今日上午(${morningStart}-${morningEnd})</span>
-              <span class="info-value">${todayMorning} 分 (${pointsToMoney(todayMorning)} 元)</span>
+            <div class="info-row" style="flex-direction: column; align-items: flex-start;">
+              <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 4px;">
+                <span class="info-label">今日上午 (${morningStart}-${morningEnd})</span>
+                <span class="info-value">${todayMorning}/${morningMax} 分 ${showMoney ? `(${pointsToMoney(todayMorning, pointsToYuan)} 元)` : ''}</span>
+              </div>
+              <div style="width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden;">
+                <div style="width: ${morningPercent}%; height: 100%; background: ${morningPercent >= 100 ? '#4CAF50' : '#2196F3'}; border-radius: 4px;"></div>
+              </div>
             </div>
-            <div class="info-row">
-              <span class="info-label">今日下午(${afternoonStart}-${afternoonEnd})</span>
-              <span class="info-value">${todayAfternoon} 分 (${pointsToMoney(todayAfternoon)} 元)</span>
+            <div class="info-row" style="flex-direction: column; align-items: flex-start; margin-top: 8px;">
+              <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 4px;">
+                <span class="info-label">今日下午 (${afternoonStart}-${afternoonEnd})</span>
+                <span class="info-value">${todayAfternoon}/${afternoonMax} 分 ${showMoney ? `(${pointsToMoney(todayAfternoon, pointsToYuan)} 元)` : ''}</span>
+              </div>
+              <div style="width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden;">
+                <div style="width: ${afternoonPercent}%; height: 100%; background: ${afternoonPercent >= 100 ? '#4CAF50' : '#2196F3'}; border-radius: 4px;"></div>
+              </div>
             </div>
 
             ${userPersons.length > 0 ? `
@@ -731,8 +750,8 @@
                 ${userPersons.map(p => {
                   const eachTodayPoints = Math.floor(todayPoints / userPersons.length);
                   const eachMonthPoints = Math.floor(monthPoints / userPersons.length);
-                  const eachTodayMoney = (eachTodayPoints / POINTS_TO_YUAN).toFixed(2);
-                  const eachMonthMoney = (eachMonthPoints / POINTS_TO_YUAN).toFixed(2);
+                  const eachTodayMoney = pointsToMoney(eachTodayPoints, pointsToYuan);
+                  const eachMonthMoney = pointsToMoney(eachMonthPoints, pointsToYuan);
                   return `
                     <div class="share-item">
                       <span class="share-name">${p.person_name}</span>
@@ -766,10 +785,14 @@
         content.innerHTML = '<div class="loading">加载中...</div>';
         return;
       }
-      
+
       const { users, dailyRecords, allActivities } = cachedData;
       const today = new Date().toISOString().split('T')[0];
-      
+
+      // 获取当前用户的配置
+      const currentUser = users.find(u => u.id === currentUserId);
+      const pointsToYuan = currentUser?.points_to_yuan || 100;
+
       let html = `
         <div class="user-card">
           <div class="user-select">
@@ -777,7 +800,7 @@
               ${users.map(u => `<option value="${u.id}" ${u.id === currentUserId ? 'selected' : ''}>${u.display_name || u.id}</option>`).join('')}
             </select>
           </div>
-          
+
           <div class="history-header">
             <div class="month-nav">
               <button class="month-nav-btn" onclick="changeMonth(-1)">◀</button>
@@ -786,10 +809,10 @@
             </div>
           </div>
       `;
-      
+
       const userActivities = allActivities.filter(a => a.user_id === currentUserId && a.date.startsWith(currentMonth));
       const userDailyRecords = dailyRecords.filter(r => r.user_id === currentUserId && r.date.startsWith(currentMonth));
-      
+
       const dailyData = {};
       userDailyRecords.forEach(r => {
         dailyData[r.date] = {
@@ -797,14 +820,14 @@
           afternoon: r.afternoon_points || 0
         };
       });
-      
+
       const sortedDates = Object.keys(dailyData).sort((a, b) => b.localeCompare(a));
-      
+
       let monthTotal = 0;
       sortedDates.forEach(d => {
         monthTotal += dailyData[d].morning + dailyData[d].afternoon;
       });
-      
+
       html += `
           <div class="month-summary">
             <div class="month-summary-item">
@@ -813,10 +836,10 @@
             </div>
             <div class="month-summary-item">
               <span class="month-summary-label">本月总金额</span>
-              <span class="month-summary-value money">${pointsToMoney(monthTotal)} 元</span>
+              <span class="month-summary-value money">${pointsToMoney(monthTotal, pointsToYuan)} 元</span>
             </div>
           </div>
-          
+
           <table class="history-table">
             <thead>
               <tr>
@@ -829,7 +852,7 @@
             </thead>
             <tbody>
       `;
-      
+
       if (sortedDates.length === 0) {
         html += '<tr><td colspan="5" style="color:#999;padding:20px;">暂无数据</td></tr>';
       } else {
@@ -837,25 +860,25 @@
           const d = dailyData[date];
           const total = d.morning + d.afternoon;
           const isToday = date === today;
-          
+
           html += `
             <tr class="${isToday ? 'today' : ''}">
               <td class="date-col">${date.substring(5)}${isToday ? ' (今日)' : ''}</td>
               <td class="points-col">${d.morning}</td>
               <td class="points-col">${d.afternoon}</td>
               <td class="points-col">${total}</td>
-              <td class="money-col">${pointsToMoney(total)}</td>
+              <td class="money-col">${pointsToMoney(total, pointsToYuan)}</td>
             </tr>
           `;
         });
       }
-      
+
       html += `
             </tbody>
           </table>
         </div>
       `;
-      
+
       content.innerHTML = html;
     }
 
