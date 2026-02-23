@@ -881,6 +881,37 @@
       const { users } = cachedData;
       
       let html = `
+        <div class="admin-tabs" style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <button class="admin-tab-btn ${settingsTab === 'user' ? 'active' : ''}" onclick="switchSettingsTab('user')">用户设置</button>
+          <button class="admin-tab-btn ${settingsTab === 'global' ? 'active' : ''}" onclick="switchSettingsTab('global')">全局设置</button>
+        </div>
+        <div id="settings-panel"></div>
+      `;
+      
+      content.innerHTML = html;
+      loadSettingsPanel();
+    }
+    
+    function switchSettingsTab(tab) {
+      settingsTab = tab;
+      loadSettingsPanel();
+    }
+    
+    async function loadSettingsPanel() {
+      const panel = document.getElementById('settings-panel');
+      if (!panel) return;
+      
+      if (settingsTab === 'user') {
+        renderUserSettings(panel);
+      } else {
+        renderGlobalSettings(panel);
+      }
+    }
+    
+    function renderUserSettings(panel) {
+      const { users } = cachedData;
+      
+      let html = `
         <div class="settings-section">
           <div class="settings-title">用户设置</div>
           <div class="user-select">
@@ -888,11 +919,6 @@
             <select id="user-select" onchange="loadUserSettings()">
               ${users.map(u => `<option value="${u.id}">${u.display_name || u.id}</option>`).join('')}
             </select>
-          </div>
-          <div style="margin: 10px 0;">
-            <label>显示名称：</label>
-            <input type="text" id="display-name-input" style="padding: 8px; width: 150px;">
-            <button onclick="saveDisplayName()" style="padding: 8px 16px; margin-left: 8px;">保存</button>
           </div>
         </div>
         
@@ -944,46 +970,132 @@
         </div>
         
         <div class="settings-section" style="margin-top: 20px;">
-          <div class="settings-title">清除所有数据</div>
+          <div class="settings-title">删除用户</div>
+          <div class="settings-warning">
+            ⚠️ 此操作将删除该用户及所有相关数据（每日记录、活动明细、人员等）<br>
+            删除后无法恢复！
+          </div>
+          <button class="clear-btn" style="background: #f44336;" onclick="showDeleteUserModal()">🗑️ 删除用户</button>
+        </div>
+        
+        <div class="settings-section" style="margin-top: 20px;">
+          <div class="settings-title">清除活动数据</div>
           <div class="settings-warning">
             ⚠️ 此操作将清空云端该用户的所有数据（每日记录、活动明细）<br>
             清除后请在App端点击"从云端同步"以清空本地数据
           </div>
           <button class="clear-btn" onclick="showPasswordModal()">🗑️ 清除所有数据</button>
         </div>
-        
-        <div class="settings-section" style="margin-top: 20px;">
-          <div class="settings-title">全局配置管理</div>
-          <div class="admin-tabs" style="display: flex; gap: 8px; margin-bottom: 16px;">
-            <button class="admin-tab-btn ${settingsTab === 'users' ? 'active' : ''}" onclick="switchSettingsTab('users')">用户管理</button>
-            <button class="admin-tab-btn ${settingsTab === 'templates' ? 'active' : ''}" onclick="switchSettingsTab('templates')">任务模板</button>
-            <button class="admin-tab-btn ${settingsTab === 'prompts' ? 'active' : ''}" onclick="switchSettingsTab('prompts')">提示语</button>
-          </div>
-          <div id="settings-panel"></div>
-        </div>
       `;
       
-      content.innerHTML = html;
+      panel.innerHTML = html;
       loadUserSettings();
-      loadSettingsPanel();
     }
     
-    let settingsTab = 'users';
-    
-    function switchSettingsTab(tab) {
-      settingsTab = tab;
-      document.querySelectorAll('.admin-tab-btn').forEach(btn => btn.classList.remove('active'));
-      event.target.classList.add('active');
-      loadSettingsPanel();
+    function showDeleteUserModal() {
+      const userId = document.getElementById('user-select').value;
+      const user = cachedData.users.find(u => u.id === userId);
+      const displayName = user?.display_name || userId;
+      
+      const html = `
+        <div class="modal show" id="delete-user-modal" onclick="if(event.target===this)this.remove()">
+          <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-title">删除用户确认</div>
+            <div style="margin: 16px 0; color: #f44336; font-weight: bold;">
+              ⚠️ 即将删除用户：${displayName}（${userId}）
+            </div>
+            <div style="margin: 12px 0; color: #666; font-size: 14px;">
+              此操作将删除该用户的所有数据，包括：<br>
+              - 用户配置<br>
+              - 每日记录<br>
+              - 活动明细<br>
+              - 绑定人员<br>
+              - 设备状态<br>
+              <br>删除后无法恢复！
+            </div>
+            <div style="margin: 12px 0;">
+              <label>请输入删除密码：</label>
+              <input type="password" id="delete-password" style="width: 150px; padding: 8px;">
+            </div>
+            <div class="modal-buttons">
+              <button class="modal-btn cancel" onclick="document.getElementById('delete-user-modal').remove()">取消</button>
+              <button class="modal-btn confirm" style="background: #f44336;" onclick="deleteUser('${userId}')">确认删除</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.insertAdjacentHTML('beforeend', html);
     }
     
-    async function loadSettingsPanel() {
-      if (settingsTab === 'users') {
-        renderAdminUsers('settings-panel');
-      } else if (settingsTab === 'templates') {
-        renderAdminTemplates('settings-panel');
-      } else if (settingsTab === 'prompts') {
-        renderAdminPrompts('settings-panel');
+    async function deleteUser(userId) {
+      const password = document.getElementById('delete-password').value;
+      if (!password) {
+        alert('请输入删除密码');
+        return;
+      }
+      
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/delete_user`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            p_user_id: userId,
+            p_password: password
+          })
+        });
+        
+        const result = await res.json();
+        
+        if (result.success) {
+          alert('删除成功！');
+          document.getElementById('delete-user-modal').remove();
+          await loadData();
+          renderUserSettings(document.getElementById('settings-panel'));
+        } else {
+          alert(result.message || '删除失败');
+        }
+      } catch (e) {
+        alert('操作失败：' + e.message);
+      }
+    }
+    
+    async function renderGlobalSettings(panel) {
+      panel.innerHTML = '<div class="loading">加载中...</div>';
+      
+      let html = `
+        <div class="admin-tabs" style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <button class="admin-tab-btn ${adminTab === 'users' ? 'active' : ''}" onclick="switchAdminTab('users')">用户管理</button>
+          <button class="admin-tab-btn ${adminTab === 'templates' ? 'active' : ''}" onclick="switchAdminTab('templates')">任务模板</button>
+          <button class="admin-tab-btn ${adminTab === 'prompts' ? 'active' : ''}" onclick="switchAdminTab('prompts')">提示语</button>
+        </div>
+        <div id="admin-panel"></div>
+      `;
+      
+      panel.innerHTML = html;
+      loadAdminPanel();
+    }
+    
+    let adminTab = 'users';
+    
+    function switchAdminTab(tab) {
+      adminTab = tab;
+      loadAdminPanel();
+    }
+    
+    async function loadAdminPanel() {
+      const panel = document.getElementById('admin-panel');
+      if (!panel) return;
+      
+      if (adminTab === 'users') {
+        renderAdminUsers('admin-panel');
+      } else if (adminTab === 'templates') {
+        renderAdminTemplates('admin-panel');
+      } else {
+        renderAdminPrompts('admin-panel');
       }
     }
     
@@ -1002,7 +1114,6 @@
         const data = await res.json();
         if (data && data.length > 0) {
           const user = data[0];
-          document.getElementById('display-name-input').value = user.display_name || '';
           
           document.getElementById('morning-start-input').value = user.morning_start || '08:00';
           document.getElementById('morning-end-input').value = user.morning_end || '11:30';
