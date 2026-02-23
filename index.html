@@ -1453,7 +1453,6 @@
                     <td>${u.device_token ? '<span style="color: #4CAF50;">已绑定</span>' : '<span style="color: #FF9800;">未绑定</span>'}</td>
                     <td>
                       <button onclick="showEditUserModal('${u.id}')" style="padding: 4px 8px; font-size: 12px;">编辑</button>
-                      <button onclick="showUserPersonsModal('${u.id}')" style="padding: 4px 8px; font-size: 12px;">人员(${userPersons.length})</button>
                     </td>
                   </tr>
                 `;
@@ -1492,7 +1491,7 @@
       
       let html = `
         <div class="settings-section">
-          <div class="settings-title">任务模板配置</div>
+          <div class="settings-title">任务模板配置 <button onclick="forceSyncTable('task_templates')" style="float: right; padding: 6px 12px; font-size: 14px;">强制同步</button></div>
           <table class="admin-table">
             <thead>
               <tr>
@@ -1545,7 +1544,7 @@
       
       let html = `
         <div class="settings-section">
-          <div class="settings-title">全局提示语</div>
+          <div class="settings-title">全局提示语 <button onclick="forceSyncTable('global_prompts')" style="float: right; padding: 6px 12px; font-size: 14px;">强制同步</button></div>
           <table class="admin-table">
             <thead>
               <tr>
@@ -2053,6 +2052,55 @@
           renderAdminPrompts();
         } else {
           alert('保存失败');
+        }
+      } catch (e) {
+        alert('操作失败：' + e.message);
+      }
+    }
+
+    // 强制同步表（刷新 updated_at）
+    async function forceSyncTable(tableName) {
+      if (!confirm(`确定要强制同步 ${tableName} 表吗？这将刷新该表的更新时间，触发所有 App 端重新同步该表数据。`)) {
+        return;
+      }
+      
+      try {
+        const now = new Date().toISOString();
+        
+        if (tableName === 'task_templates') {
+          const res = await fetch(`${SUPABASE_URL}/rest/v1/task_templates`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({ updated_at: now })
+          });
+          
+          if (res.ok) {
+            alert('强制同步成功！所有 App 端将在下次同步时重新获取任务模板数据。');
+          } else {
+            alert('操作失败');
+          }
+        } else if (tableName === 'global_prompts') {
+          const res = await fetch(`${SUPABASE_URL}/rest/v1/global_prompts`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({ updated_at: now })
+          });
+          
+          if (res.ok) {
+            alert('强制同步成功！所有 App 端将在下次同步时重新获取全局提示语数据。');
+          } else {
+            alert('操作失败');
+          }
         }
       } catch (e) {
         alert('操作失败：' + e.message);
