@@ -643,7 +643,7 @@
         const yesterdayPoints = yesterdayRecord?.total_points || 0;
         const monthPoints = monthRecords.reduce((sum, r) => sum + (r.total_points || 0), 0);
         
-        const morningStart = user.morning_start || '06:00';
+        const morningStart = user.morning_start || '08:00';
         const morningEnd = user.morning_end || '11:30';
         const afternoonStart = user.afternoon_start || '14:00';
         const afternoonEnd = user.afternoon_end || '18:00';
@@ -900,7 +900,7 @@
           <div class="settings-title">时段配置</div>
           <div style="margin: 10px 0;">
             <label>上午时段：</label>
-            <input type="time" id="morning-start-input" value="06:00" style="padding: 6px;"> - 
+            <input type="time" id="morning-start-input" value="08:00" style="padding: 6px;"> - 
             <input type="time" id="morning-end-input" value="11:30" style="padding: 6px;">
           </div>
           <div style="margin: 10px 0;">
@@ -1004,7 +1004,7 @@
           const user = data[0];
           document.getElementById('display-name-input').value = user.display_name || '';
           
-          document.getElementById('morning-start-input').value = user.morning_start || '06:00';
+          document.getElementById('morning-start-input').value = user.morning_start || '08:00';
           document.getElementById('morning-end-input').value = user.morning_end || '11:30';
           document.getElementById('afternoon-start-input').value = user.afternoon_start || '14:00';
           document.getElementById('afternoon-end-input').value = user.afternoon_end || '18:00';
@@ -1335,7 +1335,7 @@
                     <td>${u.id}</td>
                     <td>${u.display_name || '-'}</td>
                     <td style="font-size: 12px;">
-                      上午: ${u.morning_start || '06:00'}-${u.morning_end || '11:30'}<br>
+                      上午: ${u.morning_start || '08:00'}-${u.morning_end || '11:30'}<br>
                       下午: ${u.afternoon_start || '14:00'}-${u.afternoon_end || '18:00'}
                     </td>
                     <td style="font-size: 12px;">${(u.task_order || 'walk,step,stand,turn_head,raise_hand,clap,breath,say_good').split(',').slice(0, 3).join(',')}...</td>
@@ -1477,7 +1477,7 @@
             </div>
             <div style="margin-bottom: 12px;">
               <label>上午时段：</label>
-              <input type="time" id="new-morning-start" value="06:00" style="padding: 6px;"> - 
+              <input type="time" id="new-morning-start" value="08:00" style="padding: 6px;"> - 
               <input type="time" id="new-morning-end" value="11:30" style="padding: 6px;">
             </div>
             <div style="margin-bottom: 12px;">
@@ -1571,7 +1571,7 @@
             </div>
             <div style="margin-bottom: 12px;">
               <label>上午时段：</label>
-              <input type="time" id="edit-morning-start" value="${user.morning_start || '06:00'}" style="padding: 6px;"> - 
+              <input type="time" id="edit-morning-start" value="${user.morning_start || '08:00'}" style="padding: 6px;"> - 
               <input type="time" id="edit-morning-end" value="${user.morning_end || '11:30'}" style="padding: 6px;">
             </div>
             <div style="margin-bottom: 12px;">
