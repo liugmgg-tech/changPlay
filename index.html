@@ -371,19 +371,23 @@
     }
     
     .admin-tab-btn {
-      padding: 10px 16px;
-      border: 1px solid #ddd;
-      background: white;
-      border-radius: 8px;
+      padding: 10px 20px;
+      border: none;
+      border-bottom: 3px solid transparent;
+      background: transparent;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 15px;
       color: #666;
+      transition: all 0.2s;
     }
-    .admin-tab-btn:hover { background: #f5f5f5; }
+    .admin-tab-btn:hover {
+      color: #333;
+      background: #f5f5f5;
+    }
     .admin-tab-btn.active {
-      background: #4CAF50;
-      color: white;
-      border-color: #4CAF50;
+      color: #4CAF50;
+      border-bottom-color: #4CAF50;
+      font-weight: 500;
     }
     
     .admin-table {
@@ -878,23 +882,28 @@
         content.innerHTML = '<div class="loading">加载中...</div>';
         return;
       }
-      
+
       const { users } = cachedData;
-      
+
       let html = `
-        <div class="admin-tabs" style="display: flex; gap: 8px; margin-bottom: 16px;">
+        <div class="admin-tabs" style="display: flex; gap: 0; margin-bottom: 0; border-bottom: 1px solid #ddd;">
           <button class="admin-tab-btn ${settingsTab === 'user' ? 'active' : ''}" onclick="switchSettingsTab('user')">用户设置</button>
           <button class="admin-tab-btn ${settingsTab === 'global' ? 'active' : ''}" onclick="switchSettingsTab('global')">全局设置</button>
         </div>
-        <div id="settings-panel"></div>
+        <div id="settings-panel" style="padding-top: 16px;"></div>
       `;
-      
+
       content.innerHTML = html;
       loadSettingsPanel();
     }
     
     function switchSettingsTab(tab) {
       settingsTab = tab;
+      // 更新按钮样式
+      document.querySelectorAll('#settings-content .admin-tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
       loadSettingsPanel();
     }
     
@@ -1087,24 +1096,29 @@
     
     async function renderGlobalSettings(panel) {
       panel.innerHTML = '<div class="loading">加载中...</div>';
-      
+
       let html = `
-        <div class="admin-tabs" style="display: flex; gap: 8px; margin-bottom: 16px;">
+        <div class="admin-tabs" style="display: flex; gap: 0; margin-bottom: 0; border-bottom: 1px solid #ddd;">
           <button class="admin-tab-btn ${adminTab === 'users' ? 'active' : ''}" onclick="switchAdminTab('users')">用户管理</button>
           <button class="admin-tab-btn ${adminTab === 'templates' ? 'active' : ''}" onclick="switchAdminTab('templates')">任务模板</button>
           <button class="admin-tab-btn ${adminTab === 'prompts' ? 'active' : ''}" onclick="switchAdminTab('prompts')">提示语</button>
         </div>
-        <div id="admin-panel"></div>
+        <div id="admin-panel" style="padding-top: 16px;"></div>
       `;
-      
+
       panel.innerHTML = html;
       loadAdminPanel();
     }
     
     let adminTab = 'users';
-    
+
     function switchAdminTab(tab) {
       adminTab = tab;
+      // 更新按钮样式
+      document.querySelectorAll('#settings-panel .admin-tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
       loadAdminPanel();
     }
     
