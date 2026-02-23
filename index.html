@@ -887,8 +887,8 @@
 
       let html = `
         <div class="admin-tabs" style="display: flex; gap: 0; margin-bottom: 0; border-bottom: 1px solid #ddd;">
-          <button class="admin-tab-btn ${settingsTab === 'user' ? 'active' : ''}" onclick="switchSettingsTab('user')">用户设置</button>
-          <button class="admin-tab-btn ${settingsTab === 'global' ? 'active' : ''}" onclick="switchSettingsTab('global')">全局设置</button>
+          <button class="admin-tab-btn ${settingsTab === 'user' ? 'active' : ''}" onclick="switchSettingsTab('user', event)">用户设置</button>
+          <button class="admin-tab-btn ${settingsTab === 'global' ? 'active' : ''}" onclick="switchSettingsTab('global', event)">全局设置</button>
         </div>
         <div id="settings-panel" style="padding-top: 16px;"></div>
       `;
@@ -896,14 +896,16 @@
       content.innerHTML = html;
       loadSettingsPanel();
     }
-    
-    function switchSettingsTab(tab) {
+
+    function switchSettingsTab(tab, evt) {
       settingsTab = tab;
       // 更新按钮样式
       document.querySelectorAll('#settings-content .admin-tab-btn').forEach(btn => {
         btn.classList.remove('active');
       });
-      event.target.classList.add('active');
+      if (evt && evt.target) {
+        evt.target.classList.add('active');
+      }
       loadSettingsPanel();
     }
     
@@ -1099,9 +1101,9 @@
 
       let html = `
         <div class="admin-tabs" style="display: flex; gap: 0; margin-bottom: 0; border-bottom: 1px solid #ddd;">
-          <button class="admin-tab-btn ${adminTab === 'users' ? 'active' : ''}" onclick="switchAdminTab('users')">用户管理</button>
-          <button class="admin-tab-btn ${adminTab === 'templates' ? 'active' : ''}" onclick="switchAdminTab('templates')">任务模板</button>
-          <button class="admin-tab-btn ${adminTab === 'prompts' ? 'active' : ''}" onclick="switchAdminTab('prompts')">提示语</button>
+          <button class="admin-tab-btn ${adminTab === 'users' ? 'active' : ''}" onclick="switchAdminTab('users', event)">用户管理</button>
+          <button class="admin-tab-btn ${adminTab === 'templates' ? 'active' : ''}" onclick="switchAdminTab('templates', event)">任务模板</button>
+          <button class="admin-tab-btn ${adminTab === 'prompts' ? 'active' : ''}" onclick="switchAdminTab('prompts', event)">提示语</button>
         </div>
         <div id="admin-panel" style="padding-top: 16px;"></div>
       `;
@@ -1109,16 +1111,18 @@
       panel.innerHTML = html;
       loadAdminPanel();
     }
-    
+
     let adminTab = 'users';
 
-    function switchAdminTab(tab) {
+    function switchAdminTab(tab, evt) {
       adminTab = tab;
       // 更新按钮样式
       document.querySelectorAll('#settings-panel .admin-tab-btn').forEach(btn => {
         btn.classList.remove('active');
       });
-      event.target.classList.add('active');
+      if (evt && evt.target) {
+        evt.target.classList.add('active');
+      }
       loadAdminPanel();
     }
     
