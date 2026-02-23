@@ -486,6 +486,7 @@
     let currentTab = 'realtime';
     let currentMonth = new Date().toISOString().substring(0, 7);
     let currentUserId = null;
+    let settingsTab = 'user';
 
     async function fetchAPI(table) {
       const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
@@ -910,7 +911,12 @@
     
     function renderUserSettings(panel) {
       const { users } = cachedData;
-      
+
+      if (!users || users.length === 0) {
+        panel.innerHTML = '<div class="settings-section"><div class="settings-warning">暂无用户数据，请先在"全局设置"中添加用户。</div></div>';
+        return;
+      }
+
       let html = `
         <div class="settings-section">
           <div class="settings-title">用户设置</div>
