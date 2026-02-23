@@ -415,7 +415,6 @@
     <button class="tab active" onclick="switchTab('realtime')">实时状态</button>
     <button class="tab" onclick="switchTab('history')">历史记录</button>
     <button id="settings-tab" class="tab hidden" onclick="switchTab('settings')">设置</button>
-    <button class="tab" onclick="switchTab('admin')">管理</button>
   </div>
   
   <button class="refresh-btn" onclick="refreshData()">🔄 刷新</button>
@@ -423,7 +422,6 @@
   <div id="realtime-content"></div>
   <div id="history-content" class="hidden"></div>
   <div id="settings-content" class="hidden"></div>
-  <div id="admin-content" class="hidden"></div>
   
   <div id="password-modal" class="modal">
     <div class="modal-content">
@@ -604,7 +602,6 @@
       document.getElementById('realtime-content').classList.add('hidden');
       document.getElementById('history-content').classList.add('hidden');
       document.getElementById('settings-content').classList.add('hidden');
-      document.getElementById('admin-content').classList.add('hidden');
       
       if (tab === 'realtime') {
         document.getElementById('realtime-content').classList.remove('hidden');
@@ -615,9 +612,6 @@
       } else if (tab === 'settings') {
         document.getElementById('settings-content').classList.remove('hidden');
         renderSettings();
-      } else if (tab === 'admin') {
-        document.getElementById('admin-content').classList.remove('hidden');
-        renderAdmin();
       }
     }
 
@@ -957,10 +951,40 @@
           </div>
           <button class="clear-btn" onclick="showPasswordModal()">🗑️ 清除所有数据</button>
         </div>
+        
+        <div class="settings-section" style="margin-top: 20px;">
+          <div class="settings-title">全局配置管理</div>
+          <div class="admin-tabs" style="display: flex; gap: 8px; margin-bottom: 16px;">
+            <button class="admin-tab-btn ${settingsTab === 'users' ? 'active' : ''}" onclick="switchSettingsTab('users')">用户管理</button>
+            <button class="admin-tab-btn ${settingsTab === 'templates' ? 'active' : ''}" onclick="switchSettingsTab('templates')">任务模板</button>
+            <button class="admin-tab-btn ${settingsTab === 'prompts' ? 'active' : ''}" onclick="switchSettingsTab('prompts')">提示语</button>
+          </div>
+          <div id="settings-panel"></div>
+        </div>
       `;
       
       content.innerHTML = html;
       loadUserSettings();
+      loadSettingsPanel();
+    }
+    
+    let settingsTab = 'users';
+    
+    function switchSettingsTab(tab) {
+      settingsTab = tab;
+      document.querySelectorAll('.admin-tab-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      loadSettingsPanel();
+    }
+    
+    async function loadSettingsPanel() {
+      if (settingsTab === 'users') {
+        renderAdminUsers('settings-panel');
+      } else if (settingsTab === 'templates') {
+        renderAdminTemplates('settings-panel');
+      } else if (settingsTab === 'prompts') {
+        renderAdminPrompts('settings-panel');
+      }
     }
     
     async function loadUserSettings() {
@@ -1277,39 +1301,10 @@
     // ========== 管理页面 ==========
     let cachedTemplates = [];
     let cachedGlobalPrompts = [];
-    let adminTab = 'users';
-    
-    async function renderAdmin() {
-      const content = document.getElementById('admin-content');
-      
-      content.innerHTML = `
-        <div class="admin-tabs" style="display: flex; gap: 8px; margin-bottom: 16px;">
-          <button class="admin-tab-btn ${adminTab === 'users' ? 'active' : ''}" onclick="switchAdminTab('users')">用户管理</button>
-          <button class="admin-tab-btn ${adminTab === 'templates' ? 'active' : ''}" onclick="switchAdminTab('templates')">任务模板</button>
-          <button class="admin-tab-btn ${adminTab === 'prompts' ? 'active' : ''}" onclick="switchAdminTab('prompts')">提示语</button>
-        </div>
-        <div id="admin-panel"></div>
-      `;
-      
-      if (adminTab === 'users') {
-        renderAdminUsers();
-      } else if (adminTab === 'templates') {
-        renderAdminTemplates();
-      } else if (adminTab === 'prompts') {
-        renderAdminPrompts();
-      }
-    }
-    
-    function switchAdminTab(tab) {
-      adminTab = tab;
-      document.querySelectorAll('.admin-tab-btn').forEach(btn => btn.classList.remove('active'));
-      event.target.classList.add('active');
-      renderAdmin();
-    }
     
     // 用户管理
-    async function renderAdminUsers() {
-      const panel = document.getElementById('admin-panel');
+    async function renderAdminUsers(panelId = 'admin-panel') {
+      const panel = document.getElementById(panelId);
       panel.innerHTML = '<div class="loading">加载中...</div>';
       
       if (!cachedData) {
@@ -1361,8 +1356,8 @@
     }
     
     // 任务模板管理
-    async function renderAdminTemplates() {
-      const panel = document.getElementById('admin-panel');
+    async function renderAdminTemplates(panelId = 'admin-panel') {
+      const panel = document.getElementById(panelId);
       panel.innerHTML = '<div class="loading">加载中...</div>';
       
       try {
@@ -1420,8 +1415,8 @@
     }
     
     // 提示语管理
-    async function renderAdminPrompts() {
-      const panel = document.getElementById('admin-panel');
+    async function renderAdminPrompts(panelId = 'admin-panel') {
+      const panel = document.getElementById(panelId);
       panel.innerHTML = '<div class="loading">加载中...</div>';
       
       try {
