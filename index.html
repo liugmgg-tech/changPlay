@@ -940,7 +940,43 @@
           <div style="margin: 10px 0;">
             <label><input type="checkbox" id="say-good-input"> 启用说"好"任务</label>
           </div>
+        </div>
+        
+        <div class="settings-section" style="margin-top: 20px;">
+          <div class="settings-title">积分配置</div>
+          <div style="margin: 10px 0;">
+            <label>上午最大积分：</label>
+            <input type="number" id="morning-max-input" value="1500" style="width: 80px; padding: 6px;">
+          </div>
+          <div style="margin: 10px 0;">
+            <label>下午最大积分：</label>
+            <input type="number" id="afternoon-max-input" value="1500" style="width: 80px; padding: 6px;">
+          </div>
+          <div style="margin: 10px 0;">
+            <label>积分兑换比例：</label>
+            <input type="number" id="points-to-yuan-input" value="100" style="width: 80px; padding: 6px;"> 积分 = 1元
+          </div>
+          <div style="margin: 10px 0;">
+            <label><input type="checkbox" id="show-money-input"> 显示金额</label>
+          </div>
           <button onclick="saveConfig()" style="padding: 8px 16px;">保存配置</button>
+        </div>
+        
+        <div class="settings-section" style="margin-top: 20px;">
+          <div class="settings-title">人员管理</div>
+          <div style="margin: 10px 0;">
+            <label>人员1：</label>
+            <input type="text" id="person1-input" style="padding: 8px; width: 120px;" placeholder="姓名">
+          </div>
+          <div style="margin: 10px 0;">
+            <label>人员2：</label>
+            <input type="text" id="person2-input" style="padding: 8px; width: 120px;" placeholder="姓名">
+          </div>
+          <div style="margin: 10px 0;">
+            <label>人员3：</label>
+            <input type="text" id="person3-input" style="padding: 8px; width: 120px;" placeholder="姓名">
+          </div>
+          <button onclick="savePersonsConfig()" style="padding: 8px 16px;">保存人员</button>
         </div>
         
         <div class="settings-section" style="margin-top: 20px;">
@@ -1082,9 +1118,8 @@
     async function loadUserSettings() {
       const userId = document.getElementById('user-select').value;
       
-      // 加载用户显示名称
       try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=display_name,device_token,bound_at,morning_start,morning_end,afternoon_start,afternoon_end,debug_mode,say_good_enabled`, {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=display_name,device_token,bound_at,morning_start,morning_end,afternoon_start,afternoon_end,debug_mode,say_good_enabled,morning_max_points,afternoon_max_points,points_to_yuan,show_money`, {
           headers: {
             'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
@@ -1102,39 +1137,42 @@
           document.getElementById('debug-mode-input').checked = user.debug_mode || false;
           document.getElementById('say-good-input').checked = user.say_good_enabled !== false;
           
+          document.getElementById('morning-max-input').value = user.morning_max_points || 1500;
+          document.getElementById('afternoon-max-input').value = user.afternoon_max_points || 1500;
+          document.getElementById('points-to-yuan-input').value = user.points_to_yuan || 100;
+          document.getElementById('show-money-input').checked = user.show_money !== false;
+          
           if (user.device_token) {
             const boundTime = user.bound_at ? new Date(user.bound_at).toLocaleString('zh-CN') : '未知';
             document.getElementById('bind-status').innerHTML = `<span style="color: #4CAF50;">✓ 已绑定</span>（绑定时间：${boundTime}）`;
           } else {
             document.getElementById('bind-status').innerHTML = `<span style="color: #FF9800;">○ 未绑定</span>`;
           }
+          
+          // 加载人员
+          try {
+            const personsRes = await fetch(`${SUPABASE_URL}/rest/v1/persons?user_id=eq.${userId}&select=person_index,person_name&order=person_index`, {
+              headers: {
+                'apikey': SUPABASE_ANON_KEY,
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+              }
+            });
+            const persons = await personsRes.json();
+            document.getElementById('person1-input').value = '';
+            document.getElementById('person2-input').value = '';
+            document.getElementById('person3-input').value = '';
+            if (persons && persons.length > 0) {
+              persons.forEach(p => {
+                const input = document.getElementById(`person${p.person_index + 1}-input`);
+                if (input) input.value = p.person_name || '';
+              });
+            }
+          } catch (e) {
+            console.error('loadPersons error:', e);
+          }
         }
       } catch (e) {
         console.error('loadUserSettings error:', e);
-      }
-      
-      // 加载绑定人员
-      try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/persons?user_id=eq.${userId}&select=person_index,person_name&order=person_index`, {
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-          }
-        });
-        
-        const persons = await res.json();
-        document.getElementById('person1-input').value = '';
-        document.getElementById('person2-input').value = '';
-        document.getElementById('person3-input').value = '';
-        
-        if (persons && persons.length > 0) {
-          persons.forEach(p => {
-            const input = document.getElementById(`person${p.person_index + 1}-input`);
-            if (input) input.value = p.person_name || '';
-          });
-        }
-      } catch (e) {
-        console.error('loadPersons error:', e);
       }
     }
     
@@ -1173,6 +1211,10 @@
       const afternoonEnd = document.getElementById('afternoon-end-input').value;
       const debugMode = document.getElementById('debug-mode-input').checked;
       const sayGoodEnabled = document.getElementById('say-good-input').checked;
+      const morningMax = parseInt(document.getElementById('morning-max-input').value) || 1500;
+      const afternoonMax = parseInt(document.getElementById('afternoon-max-input').value) || 1500;
+      const pointsToYuan = parseInt(document.getElementById('points-to-yuan-input').value) || 100;
+      const showMoney = document.getElementById('show-money-input').checked;
       
       function timeToMinutes(t) {
         const [h, m] = t.split(':').map(Number);
@@ -1203,7 +1245,11 @@
             afternoon_start: afternoonStart,
             afternoon_end: afternoonEnd,
             debug_mode: debugMode,
-            say_good_enabled: sayGoodEnabled
+            say_good_enabled: sayGoodEnabled,
+            morning_max_points: morningMax,
+            afternoon_max_points: afternoonMax,
+            points_to_yuan: pointsToYuan,
+            show_money: showMoney
           })
         });
         
@@ -1219,7 +1265,7 @@
       }
     }
     
-    async function savePersons() {
+    async function savePersonsConfig() {
       const userId = document.getElementById('user-select').value;
       const persons = [
         { index: 0, name: document.getElementById('person1-input').value.trim() },
@@ -1258,7 +1304,7 @@
           }
         }
         
-        alert('保存成功！请在App端点击"同步人员"以更新本地数据。');
+        alert('人员保存成功！App端下次启动时将自动同步。');
       } catch (e) {
         alert('操作失败：' + e.message);
       }
