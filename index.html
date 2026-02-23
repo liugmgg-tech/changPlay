@@ -369,6 +369,43 @@
       background: #f44336;
       color: white;
     }
+    
+    .admin-tab-btn {
+      padding: 10px 16px;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #666;
+    }
+    .admin-tab-btn:hover { background: #f5f5f5; }
+    .admin-tab-btn.active {
+      background: #4CAF50;
+      color: white;
+      border-color: #4CAF50;
+    }
+    
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+    .admin-table th,
+    .admin-table td {
+      padding: 12px 8px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    .admin-table th {
+      background: #f5f5f5;
+      font-weight: 500;
+      color: #666;
+      font-size: 13px;
+    }
+    .admin-table tr:hover {
+      background: #fafafa;
+    }
   </style>
 </head>
 <body>
@@ -378,6 +415,7 @@
     <button class="tab active" onclick="switchTab('realtime')">实时状态</button>
     <button class="tab" onclick="switchTab('history')">历史记录</button>
     <button id="settings-tab" class="tab hidden" onclick="switchTab('settings')">设置</button>
+    <button class="tab" onclick="switchTab('admin')">管理</button>
   </div>
   
   <button class="refresh-btn" onclick="refreshData()">🔄 刷新</button>
@@ -385,6 +423,7 @@
   <div id="realtime-content"></div>
   <div id="history-content" class="hidden"></div>
   <div id="settings-content" class="hidden"></div>
+  <div id="admin-content" class="hidden"></div>
   
   <div id="password-modal" class="modal">
     <div class="modal-content">
@@ -565,6 +604,7 @@
       document.getElementById('realtime-content').classList.add('hidden');
       document.getElementById('history-content').classList.add('hidden');
       document.getElementById('settings-content').classList.add('hidden');
+      document.getElementById('admin-content').classList.add('hidden');
       
       if (tab === 'realtime') {
         document.getElementById('realtime-content').classList.remove('hidden');
@@ -575,6 +615,9 @@
       } else if (tab === 'settings') {
         document.getElementById('settings-content').classList.remove('hidden');
         renderSettings();
+      } else if (tab === 'admin') {
+        document.getElementById('admin-content').classList.remove('hidden');
+        renderAdmin();
       }
     }
 
@@ -1230,6 +1273,622 @@
         titleClickCount = 0;
       }
     });
+
+    // ========== 管理页面 ==========
+    let cachedTemplates = [];
+    let cachedGlobalPrompts = [];
+    let adminTab = 'users';
+    
+    async function renderAdmin() {
+      const content = document.getElementById('admin-content');
+      
+      content.innerHTML = `
+        <div class="admin-tabs" style="display: flex; gap: 8px; margin-bottom: 16px;">
+          <button class="admin-tab-btn ${adminTab === 'users' ? 'active' : ''}" onclick="switchAdminTab('users')">用户管理</button>
+          <button class="admin-tab-btn ${adminTab === 'templates' ? 'active' : ''}" onclick="switchAdminTab('templates')">任务模板</button>
+          <button class="admin-tab-btn ${adminTab === 'prompts' ? 'active' : ''}" onclick="switchAdminTab('prompts')">提示语</button>
+        </div>
+        <div id="admin-panel"></div>
+      `;
+      
+      if (adminTab === 'users') {
+        renderAdminUsers();
+      } else if (adminTab === 'templates') {
+        renderAdminTemplates();
+      } else if (adminTab === 'prompts') {
+        renderAdminPrompts();
+      }
+    }
+    
+    function switchAdminTab(tab) {
+      adminTab = tab;
+      document.querySelectorAll('.admin-tab-btn').forEach(btn => btn.classList.remove('active'));
+      event.target.classList.add('active');
+      renderAdmin();
+    }
+    
+    // 用户管理
+    async function renderAdminUsers() {
+      const panel = document.getElementById('admin-panel');
+      panel.innerHTML = '<div class="loading">加载中...</div>';
+      
+      if (!cachedData) {
+        await loadData();
+      }
+      
+      const { users, persons } = cachedData;
+      
+      let html = `
+        <div class="settings-section">
+          <div class="settings-title">用户列表 <button onclick="showAddUserModal()" style="float: right; padding: 6px 12px; font-size: 14px;">+ 新增用户</button></div>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>设备编号</th>
+                <th>显示名称</th>
+                <th>时段配置</th>
+                <th>任务顺序</th>
+                <th>绑定状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${users.map(u => {
+                const userPersons = persons.filter(p => p.user_id === u.id);
+                return `
+                  <tr>
+                    <td>${u.id}</td>
+                    <td>${u.display_name || '-'}</td>
+                    <td style="font-size: 12px;">
+                      上午: ${u.morning_start || '06:00'}-${u.morning_end || '11:30'}<br>
+                      下午: ${u.afternoon_start || '14:00'}-${u.afternoon_end || '18:00'}
+                    </td>
+                    <td style="font-size: 12px;">${(u.task_order || 'walk,step,stand,turn_head,raise_hand,clap,breath,say_good').split(',').slice(0, 3).join(',')}...</td>
+                    <td>${u.device_token ? '<span style="color: #4CAF50;">已绑定</span>' : '<span style="color: #FF9800;">未绑定</span>'}</td>
+                    <td>
+                      <button onclick="showEditUserModal('${u.id}')" style="padding: 4px 8px; font-size: 12px;">编辑</button>
+                      <button onclick="showUserPersonsModal('${u.id}')" style="padding: 4px 8px; font-size: 12px;">人员(${userPersons.length})</button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+      
+      panel.innerHTML = html;
+    }
+    
+    // 任务模板管理
+    async function renderAdminTemplates() {
+      const panel = document.getElementById('admin-panel');
+      panel.innerHTML = '<div class="loading">加载中...</div>';
+      
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/task_templates?order=task_type`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+        cachedTemplates = await res.json();
+      } catch (e) {
+        console.error('load templates error:', e);
+        cachedTemplates = [];
+      }
+      
+      const taskNames = {
+        'walk': '散步', 'step': '摆手臂', 'stand': '举手放下',
+        'turn_head': '转头', 'raise_hand': '举手', 'clap': '鼓掌',
+        'breath': '深呼吸', 'say_good': '说"好"'
+      };
+      
+      let html = `
+        <div class="settings-section">
+          <div class="settings-title">任务模板配置</div>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>任务类型</th>
+                <th>名称</th>
+                <th>时长(分)</th>
+                <th>次数</th>
+                <th>积分</th>
+                <th>速度阈值</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${cachedTemplates.map(t => `
+                <tr>
+                  <td>${t.task_type}</td>
+                  <td>${t.task_name || taskNames[t.task_type] || '-'}</td>
+                  <td>${t.duration || 0}</td>
+                  <td>${t.count || 0}</td>
+                  <td>${t.points || 0}</td>
+                  <td>${t.max_speed || 0}</td>
+                  <td><button onclick="showEditTemplateModal('${t.task_type}')" style="padding: 4px 8px; font-size: 12px;">编辑</button></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+      
+      panel.innerHTML = html;
+    }
+    
+    // 提示语管理
+    async function renderAdminPrompts() {
+      const panel = document.getElementById('admin-panel');
+      panel.innerHTML = '<div class="loading">加载中...</div>';
+      
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/global_prompts?order=key`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+        cachedGlobalPrompts = await res.json();
+      } catch (e) {
+        console.error('load prompts error:', e);
+        cachedGlobalPrompts = [];
+      }
+      
+      let html = `
+        <div class="settings-section">
+          <div class="settings-title">全局提示语</div>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>键</th>
+                <th>内容</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${cachedGlobalPrompts.map(p => `
+                <tr>
+                  <td>${p.key}</td>
+                  <td style="font-size: 13px; max-width: 400px; overflow: hidden; text-overflow: ellipsis;">${p.value}</td>
+                  <td><button onclick="showEditPromptModal('${p.key}')" style="padding: 4px 8px; font-size: 12px;">编辑</button></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+      
+      panel.innerHTML = html;
+    }
+    
+    // ========== 弹窗 ==========
+    
+    // 新增用户弹窗
+    function showAddUserModal() {
+      const html = `
+        <div class="modal show" id="add-user-modal" onclick="if(event.target===this)this.remove()">
+          <div class="modal-content" style="max-width: 500px;" onclick="event.stopPropagation()">
+            <div class="modal-title">新增用户</div>
+            <div style="margin-bottom: 12px;">
+              <label>设备编号：</label>
+              <input type="text" id="new-user-id" style="width: 100px; padding: 8px;" placeholder="如 001">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label>显示名称：</label>
+              <input type="text" id="new-user-name" style="width: 150px; padding: 8px;" placeholder="姓名">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label>上午时段：</label>
+              <input type="time" id="new-morning-start" value="06:00" style="padding: 6px;"> - 
+              <input type="time" id="new-morning-end" value="11:30" style="padding: 6px;">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label>下午时段：</label>
+              <input type="time" id="new-afternoon-start" value="14:00" style="padding: 6px;"> - 
+              <input type="time" id="new-afternoon-end" value="18:00" style="padding: 6px;">
+            </div>
+            <div class="modal-buttons">
+              <button class="modal-btn cancel" onclick="document.getElementById('add-user-modal').remove()">取消</button>
+              <button class="modal-btn confirm" onclick="createUser()">创建</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    
+    async function createUser() {
+      const id = document.getElementById('new-user-id').value.trim();
+      const displayName = document.getElementById('new-user-name').value.trim();
+      const morningStart = document.getElementById('new-morning-start').value;
+      const morningEnd = document.getElementById('new-morning-end').value;
+      const afternoonStart = document.getElementById('new-afternoon-start').value;
+      const afternoonEnd = document.getElementById('new-afternoon-end').value;
+      
+      if (!id) {
+        alert('请输入设备编号');
+        return;
+      }
+      
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+          method: 'POST',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
+            id: id,
+            display_name: displayName,
+            morning_start: morningStart,
+            morning_end: morningEnd,
+            afternoon_start: afternoonStart,
+            afternoon_end: afternoonEnd,
+            task_order: 'walk,step,stand,turn_head,raise_hand,clap,breath,say_good',
+            morning_max_points: 1500,
+            afternoon_max_points: 1500,
+            show_money: true,
+            points_to_yuan: 100,
+            say_good_enabled: true,
+            debug_mode: false
+          })
+        });
+        
+        if (res.ok) {
+          alert('创建成功！');
+          document.getElementById('add-user-modal').remove();
+          await loadData();
+          renderAdminUsers();
+        } else {
+          const err = await res.text();
+          alert('创建失败：' + err);
+        }
+      } catch (e) {
+        alert('操作失败：' + e.message);
+      }
+    }
+    
+    // 编辑用户弹窗
+    async function showEditUserModal(userId) {
+      const user = cachedData.users.find(u => u.id === userId);
+      if (!user) return;
+      
+      const taskTypes = ['walk', 'step', 'stand', 'turn_head', 'raise_hand', 'clap', 'breath', 'say_good'];
+      const taskNames = {
+        'walk': '散步', 'step': '摆手臂', 'stand': '举手放下',
+        'turn_head': '转头', 'raise_hand': '举手', 'clap': '鼓掌',
+        'breath': '深呼吸', 'say_good': '说"好"'
+      };
+      const currentOrder = (user.task_order || taskTypes.join(',')).split(',');
+      
+      const html = `
+        <div class="modal show" id="edit-user-modal" onclick="if(event.target===this)this.remove()">
+          <div class="modal-content" style="max-width: 600px; max-height: 80vh; overflow-y: auto;" onclick="event.stopPropagation()">
+            <div class="modal-title">编辑用户 - ${userId}</div>
+            <div style="margin-bottom: 12px;">
+              <label>显示名称：</label>
+              <input type="text" id="edit-display-name" value="${user.display_name || ''}" style="width: 150px; padding: 8px;">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label>上午时段：</label>
+              <input type="time" id="edit-morning-start" value="${user.morning_start || '06:00'}" style="padding: 6px;"> - 
+              <input type="time" id="edit-morning-end" value="${user.morning_end || '11:30'}" style="padding: 6px;">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label>下午时段：</label>
+              <input type="time" id="edit-afternoon-start" value="${user.afternoon_start || '14:00'}" style="padding: 6px;"> - 
+              <input type="time" id="edit-afternoon-end" value="${user.afternoon_end || '18:00'}" style="padding: 6px;">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label>上午最大积分：</label>
+              <input type="number" id="edit-morning-max" value="${user.morning_max_points || 1500}" style="width: 80px; padding: 6px;">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label>下午最大积分：</label>
+              <input type="number" id="edit-afternoon-max" value="${user.afternoon_max_points || 1500}" style="width: 80px; padding: 6px;">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label>积分兑换比例：</label>
+              <input type="number" id="edit-points-to-yuan" value="${user.points_to_yuan || 100}" style="width: 80px; padding: 6px;"> 积分 = 1元
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label><input type="checkbox" id="edit-show-money" ${user.show_money !== false ? 'checked' : ''}> 显示金额</label>
+              <label style="margin-left: 16px;"><input type="checkbox" id="edit-debug-mode" ${user.debug_mode ? 'checked' : ''}> 调试模式</label>
+              <label style="margin-left: 16px;"><input type="checkbox" id="edit-say-good" ${user.say_good_enabled !== false ? 'checked' : ''}> 启用说"好"</label>
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label>任务顺序（勾选启用的任务）：</label>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+                ${taskTypes.map(t => `
+                  <label style="display: flex; align-items: center; padding: 4px 8px; background: #f0f0f0; border-radius: 4px;">
+                    <input type="checkbox" class="task-checkbox" value="${t}" ${currentOrder.includes(t) ? 'checked' : ''} onchange="updateTaskOrder()">
+                    ${taskNames[t]}
+                  </label>
+                `).join('')}
+              </div>
+              <input type="hidden" id="edit-task-order" value="${currentOrder.join(',')}">
+            </div>
+            <div class="modal-buttons">
+              <button class="modal-btn cancel" onclick="document.getElementById('edit-user-modal').remove()">取消</button>
+              <button class="modal-btn confirm" onclick="saveUser('${userId}')">保存</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    
+    function updateTaskOrder() {
+      const checkboxes = document.querySelectorAll('.task-checkbox:checked');
+      const order = Array.from(checkboxes).map(cb => cb.value);
+      document.getElementById('edit-task-order').value = order.join(',');
+    }
+    
+    async function saveUser(userId) {
+      const displayName = document.getElementById('edit-display-name').value.trim();
+      const morningStart = document.getElementById('edit-morning-start').value;
+      const morningEnd = document.getElementById('edit-morning-end').value;
+      const afternoonStart = document.getElementById('edit-afternoon-start').value;
+      const afternoonEnd = document.getElementById('edit-afternoon-end').value;
+      const morningMax = parseInt(document.getElementById('edit-morning-max').value) || 1500;
+      const afternoonMax = parseInt(document.getElementById('edit-afternoon-max').value) || 1500;
+      const pointsToYuan = parseInt(document.getElementById('edit-points-to-yuan').value) || 100;
+      const showMoney = document.getElementById('edit-show-money').checked;
+      const debugMode = document.getElementById('edit-debug-mode').checked;
+      const sayGoodEnabled = document.getElementById('edit-say-good').checked;
+      const taskOrder = document.getElementById('edit-task-order').value;
+      
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({
+            display_name: displayName,
+            morning_start: morningStart,
+            morning_end: morningEnd,
+            afternoon_start: afternoonStart,
+            afternoon_end: afternoonEnd,
+            morning_max_points: morningMax,
+            afternoon_max_points: afternoonMax,
+            points_to_yuan: pointsToYuan,
+            show_money: showMoney,
+            debug_mode: debugMode,
+            say_good_enabled: sayGoodEnabled,
+            task_order: taskOrder
+          })
+        });
+        
+        if (res.ok) {
+          alert('保存成功！');
+          document.getElementById('edit-user-modal').remove();
+          await loadData();
+          renderAdminUsers();
+        } else {
+          alert('保存失败');
+        }
+      } catch (e) {
+        alert('操作失败：' + e.message);
+      }
+    }
+    
+    // 人员管理弹窗
+    async function showUserPersonsModal(userId) {
+      const userPersons = cachedData.persons.filter(p => p.user_id === userId);
+      
+      const html = `
+        <div class="modal show" id="persons-modal" onclick="if(event.target===this)this.remove()">
+          <div class="modal-content" style="max-width: 400px;" onclick="event.stopPropagation()">
+            <div class="modal-title">分账人员 - ${userId}</div>
+            <div id="persons-list">
+              ${[0, 1, 2].map(i => {
+                const p = userPersons.find(up => up.person_index === i);
+                return `
+                  <div style="margin-bottom: 8px;">
+                    <label>人员${i + 1}：</label>
+                    <input type="text" class="person-input" data-index="${i}" value="${p ? p.person_name : ''}" style="width: 150px; padding: 8px;" placeholder="姓名">
+                  </div>
+                `;
+              }).join('')}
+            </div>
+            <div class="modal-buttons">
+              <button class="modal-btn cancel" onclick="document.getElementById('persons-modal').remove()">取消</button>
+              <button class="modal-btn confirm" onclick="saveUserPersons('${userId}')">保存</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    
+    async function saveUserPersons(userId) {
+      const inputs = document.querySelectorAll('.person-input');
+      const persons = [];
+      
+      inputs.forEach(input => {
+        const name = input.value.trim();
+        if (name) {
+          persons.push({
+            user_id: userId,
+            person_index: parseInt(input.dataset.index),
+            person_name: name
+          });
+        }
+      });
+      
+      try {
+        // 先删除旧数据
+        await fetch(`${SUPABASE_URL}/rest/v1/persons?user_id=eq.${userId}`, {
+          method: 'DELETE',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Prefer': 'return=minimal'
+          }
+        });
+        
+        // 插入新数据
+        for (const p of persons) {
+          await fetch(`${SUPABASE_URL}/rest/v1/persons`, {
+            method: 'POST',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify(p)
+          });
+        }
+        
+        alert('保存成功！');
+        document.getElementById('persons-modal').remove();
+        await loadData();
+        renderAdminUsers();
+      } catch (e) {
+        alert('操作失败：' + e.message);
+      }
+    }
+    
+    // 编辑任务模板弹窗
+    function showEditTemplateModal(taskType) {
+      const template = cachedTemplates.find(t => t.task_type === taskType);
+      if (!template) return;
+      
+      const html = `
+        <div class="modal show" id="template-modal" onclick="if(event.target===this)this.remove()">
+          <div class="modal-content" style="max-width: 500px;" onclick="event.stopPropagation()">
+            <div class="modal-title">编辑任务模板 - ${taskType}</div>
+            <div style="margin-bottom: 12px;">
+              <label>任务名称：</label>
+              <input type="text" id="template-name" value="${template.task_name || ''}" style="width: 150px; padding: 8px;">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label>时长（分钟）：</label>
+              <input type="number" id="template-duration" value="${template.duration || 0}" style="width: 80px; padding: 6px;">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label>次数（说"好"专用）：</label>
+              <input type="number" id="template-count" value="${template.count || 0}" style="width: 80px; padding: 6px;">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label>固定积分：</label>
+              <input type="number" id="template-points" value="${template.points || 0}" style="width: 80px; padding: 6px;">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label>最大速度阈值：</label>
+              <input type="number" id="template-max-speed" value="${template.max_speed || 0}" style="width: 80px; padding: 6px;">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label>最小间隔（毫秒）：</label>
+              <input type="number" id="template-min-interval" value="${template.min_interval || 0}" style="width: 100px; padding: 6px;">
+            </div>
+            <div style="margin-bottom: 12px;">
+              <label>暂停阈值（毫秒）：</label>
+              <input type="number" id="template-pause-threshold" value="${template.pause_threshold || 0}" style="width: 100px; padding: 6px;">
+            </div>
+            <div class="modal-buttons">
+              <button class="modal-btn cancel" onclick="document.getElementById('template-modal').remove()">取消</button>
+              <button class="modal-btn confirm" onclick="saveTemplate('${taskType}')">保存</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    
+    async function saveTemplate(taskType) {
+      const data = {
+        task_name: document.getElementById('template-name').value.trim(),
+        duration: parseInt(document.getElementById('template-duration').value) || 0,
+        count: parseInt(document.getElementById('template-count').value) || 0,
+        points: parseInt(document.getElementById('template-points').value) || 0,
+        max_speed: parseInt(document.getElementById('template-max-speed').value) || 0,
+        min_interval: parseInt(document.getElementById('template-min-interval').value) || 0,
+        pause_threshold: parseInt(document.getElementById('template-pause-threshold').value) || 0
+      };
+      
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/task_templates?task_type=eq.${taskType}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify(data)
+        });
+        
+        if (res.ok) {
+          alert('保存成功！');
+          document.getElementById('template-modal').remove();
+          renderAdminTemplates();
+        } else {
+          alert('保存失败');
+        }
+      } catch (e) {
+        alert('操作失败：' + e.message);
+      }
+    }
+    
+    // 编辑提示语弹窗
+    function showEditPromptModal(key) {
+      const prompt = cachedGlobalPrompts.find(p => p.key === key);
+      if (!prompt) return;
+      
+      const html = `
+        <div class="modal show" id="prompt-modal" onclick="if(event.target===this)this.remove()">
+          <div class="modal-content" style="max-width: 500px;" onclick="event.stopPropagation()">
+            <div class="modal-title">编辑提示语 - ${key}</div>
+            <div style="margin-bottom: 12px;">
+              <textarea id="prompt-value" style="width: 100%; height: 100px; padding: 8px;">${prompt.value || ''}</textarea>
+            </div>
+            <div class="modal-buttons">
+              <button class="modal-btn cancel" onclick="document.getElementById('prompt-modal').remove()">取消</button>
+              <button class="modal-btn confirm" onclick="savePrompt('${key}')">保存</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+    
+    async function savePrompt(key) {
+      const value = document.getElementById('prompt-value').value.trim();
+      
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/global_prompts?key=eq.${key}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({ value: value })
+        });
+        
+        if (res.ok) {
+          alert('保存成功！');
+          document.getElementById('prompt-modal').remove();
+          renderAdminPrompts();
+        } else {
+          alert('保存失败');
+        }
+      } catch (e) {
+        alert('操作失败：' + e.message);
+      }
+    }
 
     // 初始化
     async function init() {
