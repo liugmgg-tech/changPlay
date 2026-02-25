@@ -1693,7 +1693,7 @@
             </div>
             <div style="margin-bottom: 12px;">
               <label>${durationOrCountLabel}</label>
-              <input type="number" id="${durationOrCountId}" value="${durationOrCountValue}" style="width: 80px; padding: 6px;" placeholder="${durationOrCountPlaceholder">
+              <input type="number" id="${durationOrCountId}" value="${durationOrCountValue}" style="width: 80px; padding: 6px;" placeholder="${durationOrCountPlaceholder}">
               <input type="hidden" id="${isSayGood ? 'template-duration' : 'template-count'}" value="0">
             </div>
             <div style="margin-bottom: 12px;">
@@ -1743,7 +1743,7 @@
                   <label style="font-size: 13px; color: #666;">进度提示 <span style="color: #999;">({current}=已进行, {remaining}=剩余)</span>：</label><br>
                   <input type="text" id="prompt-progress" value="${progress}" style="width: 100%; padding: 6px; font-size: 13px;">
                 </div>
-                ` : '<input type="hidden" id="prompt-progress" value="">'}`.replace(/\n\s+/g, '\n              ')}
+                ` : '<input type="hidden" id="prompt-progress" value="">'}
               </div>
             </div>
             
