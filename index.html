@@ -909,7 +909,7 @@
       let html = `
         <div class="admin-tabs" style="display: flex; gap: 0; margin-bottom: 0; border-bottom: 1px solid #ddd;">
           <button class="admin-tab-btn ${settingsTab === 'users' ? 'active' : ''}" onclick="switchSettingsTab('users', event)">用户配置</button>
-          <button class="admin-tab-btn ${settingsTab === 'persons' ? 'active' : ''}" onclick="switchSettingsTab('persons', event)">人员管理</button>
+          <button class="admin-tab-btn ${settingsTab === 'persons' ? 'active' : ''}" onclick="switchSettingsTab('persons', event)">分账人员管理</button>
           <button class="admin-tab-btn ${settingsTab === 'templates' ? 'active' : ''}" onclick="switchSettingsTab('templates', event)">任务模板</button>
           <button class="admin-tab-btn ${settingsTab === 'prompts' ? 'active' : ''}" onclick="switchSettingsTab('prompts', event)">提示语</button>
         </div>
@@ -1063,15 +1063,15 @@
       }
     }
 
-    // ========== 人员管理 Tab ==========
+    // ========== 分账人员管理 Tab ==========
     function renderPersonsPanel(panel) {
       const { users, persons } = cachedData;
       
       let html = `
         <div class="settings-section">
-          <div class="settings-title">人员管理 <button onclick="forceSyncPersons()" style="float: right; padding: 6px 12px; font-size: 14px;">强制同步</button></div>
+          <div class="settings-title">分账人员管理 <button onclick="forceSyncPersons()" style="float: right; padding: 6px 12px; font-size: 14px;">强制同步</button></div>
           <div style="color: #666; margin-bottom: 16px; font-size: 14px;">
-            提示：修改人员后，App 端会自动同步。删除人员后也需要同步。
+            提示：分账人员用于在App端按人员统计积分和金额。不设置分账人员也可正常使用App。修改后App端会自动同步。
           </div>
       `;
       
@@ -1247,8 +1247,7 @@
               <tr>
                 <th>任务类型</th>
                 <th>名称</th>
-                <th>时长(分)</th>
-                <th>次数</th>
+                <th>时长/次数</th>
                 <th>积分</th>
                 <th>速度阈值</th>
                 <th>操作</th>
@@ -1259,8 +1258,7 @@
                 <tr>
                   <td>${t.task_type}</td>
                   <td>${t.task_name || taskNames[t.task_type] || '-'}</td>
-                  <td>${t.duration || 0}</td>
-                  <td>${t.count || 0}</td>
+                  <td>${t.task_type === 'say_good' ? (t.count || 0) + '次' : (t.duration || 0) + '分钟'}</td>
                   <td>${t.points || 0}</td>
                   <td>${t.max_speed || 0}</td>
                   <td><button onclick="showEditTemplateModal('${t.task_type}')" style="padding: 4px 8px; font-size: 12px;">编辑</button></td>
@@ -1467,7 +1465,7 @@
           alert('创建成功！');
           document.getElementById('add-user-modal').remove();
           await loadData();
-          renderAdminUsers();
+          renderUsersPanel(document.getElementById('settings-panel'));
         } else {
           const err = await res.text();
           alert('创建失败：' + err);
@@ -1523,16 +1521,23 @@
             <div style="margin-bottom: 12px;">
               <label><input type="checkbox" id="edit-show-money" ${user.show_money !== false ? 'checked' : ''}> 显示金额</label>
               <label style="margin-left: 16px;"><input type="checkbox" id="edit-debug-mode" ${user.debug_mode ? 'checked' : ''}> 调试模式</label>
-              <label style="margin-left: 16px;"><input type="checkbox" id="edit-say-good" ${user.say_good_enabled !== false ? 'checked' : ''}> 启用说"好"</label>
             </div>
             <div style="margin-bottom: 12px;">
-              <label>任务顺序（勾选启用的任务）：</label>
-              <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
-                ${taskTypes.map(t => `
-                  <label style="display: flex; align-items: center; padding: 4px 8px; background: #f0f0f0; border-radius: 4px;">
-                    <input type="checkbox" class="task-checkbox" value="${t}" ${currentOrder.includes(t) ? 'checked' : ''} onchange="updateTaskOrder()">
-                    ${taskNames[t]}
-                  </label>
+              <label>任务顺序（勾选启用，拖拽排序）：</label>
+              <div id="task-order-list" style="margin-top: 8px;">
+                ${currentOrder.map((t, idx) => `
+                  <div class="task-order-item" data-task="${t}" draggable="true" style="display: flex; align-items: center; padding: 8px 12px; margin-bottom: 4px; background: #f5f5f5; border-radius: 4px; cursor: move;">
+                    <input type="checkbox" class="task-enabled" value="${t}" checked onchange="updateTaskOrderFromList()" style="margin-right: 8px;">
+                    <span class="drag-handle" style="color: #999; margin-right: 8px;">☰</span>
+                    <span>${taskNames[t] || t}</span>
+                  </div>
+                `).join('')}
+                ${taskTypes.filter(t => !currentOrder.includes(t)).map(t => `
+                  <div class="task-order-item" data-task="${t}" draggable="true" style="display: flex; align-items: center; padding: 8px 12px; margin-bottom: 4px; background: #fff; border: 1px dashed #ccc; border-radius: 4px; cursor: move; opacity: 0.6;">
+                    <input type="checkbox" class="task-enabled" value="${t}" onchange="updateTaskOrderFromList()" style="margin-right: 8px;">
+                    <span class="drag-handle" style="color: #999; margin-right: 8px;">☰</span>
+                    <span>${taskNames[t] || t}</span>
+                  </div>
                 `).join('')}
               </div>
               <input type="hidden" id="edit-task-order" value="${currentOrder.join(',')}">
@@ -1545,12 +1550,62 @@
         </div>
       `;
       document.body.insertAdjacentHTML('beforeend', html);
+      initTaskDragSort();
     }
     
-    function updateTaskOrder() {
-      const checkboxes = document.querySelectorAll('.task-checkbox:checked');
-      const order = Array.from(checkboxes).map(cb => cb.value);
+    function updateTaskOrderFromList() {
+      const items = document.querySelectorAll('#task-order-list .task-order-item');
+      const order = [];
+      items.forEach(item => {
+        const checkbox = item.querySelector('.task-enabled');
+        if (checkbox && checkbox.checked) {
+          order.push(item.dataset.task);
+        }
+      });
       document.getElementById('edit-task-order').value = order.join(',');
+    }
+    
+    // 初始化拖拽排序
+    function initTaskDragSort() {
+      const list = document.getElementById('task-order-list');
+      if (!list) return;
+      
+      let draggedItem = null;
+      
+      list.querySelectorAll('.task-order-item').forEach(item => {
+        item.addEventListener('dragstart', function(e) {
+          draggedItem = this;
+          this.style.opacity = '0.5';
+        });
+        
+        item.addEventListener('dragend', function(e) {
+          this.style.opacity = '';
+          updateTaskOrderFromList();
+        });
+        
+        item.addEventListener('dragover', function(e) {
+          e.preventDefault();
+          const afterElement = getDragAfterElement(list, e.clientY);
+          if (afterElement == null) {
+            list.appendChild(draggedItem);
+          } else {
+            list.insertBefore(draggedItem, afterElement);
+          }
+        });
+      });
+    }
+    
+    function getDragAfterElement(container, y) {
+      const draggableElements = [...container.querySelectorAll('.task-order-item:not(.dragging)')];
+      return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        if (offset < 0 && offset > closest.offset) {
+          return { offset: offset, element: child };
+        } else {
+          return closest;
+        }
+      }, { offset: Number.NEGATIVE_INFINITY }).element;
     }
     
     async function saveUser(userId) {
@@ -1564,8 +1619,9 @@
       const pointsToYuan = parseInt(document.getElementById('edit-points-to-yuan').value) || 100;
       const showMoney = document.getElementById('edit-show-money').checked;
       const debugMode = document.getElementById('edit-debug-mode').checked;
-      const sayGoodEnabled = document.getElementById('edit-say-good').checked;
       const taskOrder = document.getElementById('edit-task-order').value;
+      // 根据任务顺序中是否包含 say_good 来决定是否启用
+      const sayGoodEnabled = taskOrder.includes('say_good');
       
       try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`, {
@@ -1588,7 +1644,8 @@
             show_money: showMoney,
             debug_mode: debugMode,
             say_good_enabled: sayGoodEnabled,
-            task_order: taskOrder
+            task_order: taskOrder,
+            updated_at: new Date().toISOString()
           })
         });
         
@@ -1618,6 +1675,14 @@
       const completed = promptConfig.completed || '太好了，获得{points}积分';
       const progress = promptConfig.progress || '';
       
+      // 根据任务类型决定显示次数还是时长
+      const isSayGood = taskType === 'say_good';
+      const showProgress = taskType === 'walk' || taskType === 'step';
+      const durationOrCountLabel = isSayGood ? '次数：' : '时长（分钟）：';
+      const durationOrCountValue = isSayGood ? (template.count || 0) : (template.duration || 0);
+      const durationOrCountId = isSayGood ? 'template-count' : 'template-duration';
+      const durationOrCountPlaceholder = isSayGood ? '如 10' : '如 5';
+      
       const html = `
         <div class="modal show" id="template-modal" onclick="if(event.target===this)this.remove()">
           <div class="modal-content" style="max-width: 550px; max-height: 85vh; overflow-y: auto;" onclick="event.stopPropagation()">
@@ -1627,12 +1692,9 @@
               <input type="text" id="template-name" value="${template.task_name || ''}" style="width: 150px; padding: 8px;">
             </div>
             <div style="margin-bottom: 12px;">
-              <label>时长（分钟）：</label>
-              <input type="number" id="template-duration" value="${template.duration || 0}" style="width: 80px; padding: 6px;">
-            </div>
-            <div style="margin-bottom: 12px;">
-              <label>次数（说"好"专用）：</label>
-              <input type="number" id="template-count" value="${template.count || 0}" style="width: 80px; padding: 6px;">
+              <label>${durationOrCountLabel}</label>
+              <input type="number" id="${durationOrCountId}" value="${durationOrCountValue}" style="width: 80px; padding: 6px;" placeholder="${durationOrCountPlaceholder">
+              <input type="hidden" id="${isSayGood ? 'template-duration' : 'template-count'}" value="0">
             </div>
             <div style="margin-bottom: 12px;">
               <label>固定积分：</label>
@@ -1676,10 +1738,12 @@
                   <label style="font-size: 13px; color: #666;">完成提示 <span style="color: #999;">({points}=积分)</span>：</label><br>
                   <input type="text" id="prompt-completed" value="${completed}" style="width: 100%; padding: 6px; font-size: 13px;">
                 </div>
+                ${showProgress ? `
                 <div style="margin-bottom: 10px;">
                   <label style="font-size: 13px; color: #666;">进度提示 <span style="color: #999;">({current}=已进行, {remaining}=剩余)</span>：</label><br>
-                  <input type="text" id="prompt-progress" value="${progress}" style="width: 100%; padding: 6px; font-size: 13px;" placeholder="仅散步、摆手臂使用">
+                  <input type="text" id="prompt-progress" value="${progress}" style="width: 100%; padding: 6px; font-size: 13px;">
                 </div>
+                ` : '<input type="hidden" id="prompt-progress" value="">'}`.replace(/\n\s+/g, '\n              ')}
               </div>
             </div>
             
