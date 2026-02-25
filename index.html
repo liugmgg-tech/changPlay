@@ -906,12 +906,12 @@
         return;
       }
 
-      const { users } = cachedData;
-
       let html = `
         <div class="admin-tabs" style="display: flex; gap: 0; margin-bottom: 0; border-bottom: 1px solid #ddd;">
-          <button class="admin-tab-btn ${settingsTab === 'user' ? 'active' : ''}" onclick="switchSettingsTab('user', event)">用户设置</button>
-          <button class="admin-tab-btn ${settingsTab === 'global' ? 'active' : ''}" onclick="switchSettingsTab('global', event)">全局设置</button>
+          <button class="admin-tab-btn ${settingsTab === 'users' ? 'active' : ''}" onclick="switchSettingsTab('users', event)">用户配置</button>
+          <button class="admin-tab-btn ${settingsTab === 'persons' ? 'active' : ''}" onclick="switchSettingsTab('persons', event)">人员管理</button>
+          <button class="admin-tab-btn ${settingsTab === 'templates' ? 'active' : ''}" onclick="switchSettingsTab('templates', event)">任务模板</button>
+          <button class="admin-tab-btn ${settingsTab === 'prompts' ? 'active' : ''}" onclick="switchSettingsTab('prompts', event)">提示语</button>
         </div>
         <div id="settings-panel" style="padding-top: 16px;"></div>
       `;
@@ -936,120 +936,64 @@
       const panel = document.getElementById('settings-panel');
       if (!panel) return;
       
-      if (settingsTab === 'user') {
-        renderUserSettings(panel);
+      if (settingsTab === 'users') {
+        renderUsersPanel(panel);
+      } else if (settingsTab === 'persons') {
+        renderPersonsPanel(panel);
+      } else if (settingsTab === 'templates') {
+        renderTemplatesPanel(panel);
       } else {
-        renderGlobalSettings(panel);
+        renderPromptsPanel(panel);
       }
     }
     
-    function renderUserSettings(panel) {
+    // ========== 用户配置 Tab ==========
+    function renderUsersPanel(panel) {
       const { users } = cachedData;
-
-      if (!users || users.length === 0) {
-        panel.innerHTML = '<div class="settings-section"><div class="settings-warning">暂无用户数据，请先在"全局设置"中添加用户。</div></div>';
-        return;
-      }
 
       let html = `
         <div class="settings-section">
-          <div class="settings-title">用户设置</div>
-          <div class="user-select">
-            <label>选择用户：</label>
-            <select id="user-select" onchange="loadUserSettings()">
-              ${users.map(u => `<option value="${u.id}">${u.display_name || u.id}</option>`).join('')}
-            </select>
-          </div>
-        </div>
-        
-        <div class="settings-section" style="margin-top: 20px;">
-          <div class="settings-title">时段配置</div>
-          <div style="margin: 10px 0;">
-            <label>上午时段：</label>
-            <input type="time" id="morning-start-input" value="08:00" style="padding: 6px;"> - 
-            <input type="time" id="morning-end-input" value="11:30" style="padding: 6px;">
-          </div>
-          <div style="margin: 10px 0;">
-            <label>下午时段：</label>
-            <input type="time" id="afternoon-start-input" value="14:00" style="padding: 6px;"> - 
-            <input type="time" id="afternoon-end-input" value="18:00" style="padding: 6px;">
-          </div>
-          <div style="margin: 10px 0;">
-            <label><input type="checkbox" id="debug-mode-input"> 调试模式（全时段可用）</label>
-          </div>
-          <div style="margin: 10px 0;">
-            <label><input type="checkbox" id="say-good-input"> 启用说"好"任务</label>
-          </div>
-        </div>
-        
-        <div class="settings-section" style="margin-top: 20px;">
-          <div class="settings-title">积分配置</div>
-          <div style="margin: 10px 0;">
-            <label>上午最大积分：</label>
-            <input type="number" id="morning-max-input" value="1500" style="width: 80px; padding: 6px;">
-          </div>
-          <div style="margin: 10px 0;">
-            <label>下午最大积分：</label>
-            <input type="number" id="afternoon-max-input" value="1500" style="width: 80px; padding: 6px;">
-          </div>
-          <div style="margin: 10px 0;">
-            <label>积分兑换比例：</label>
-            <input type="number" id="points-to-yuan-input" value="100" style="width: 80px; padding: 6px;"> 积分 = 1元
-          </div>
-          <div style="margin: 10px 0;">
-            <label><input type="checkbox" id="show-money-input"> 显示金额</label>
-          </div>
-          <button onclick="saveConfig()" style="padding: 8px 16px;">保存配置</button>
-        </div>
-        
-        <div class="settings-section" style="margin-top: 20px;">
-          <div class="settings-title">人员管理</div>
-          <div style="margin: 10px 0;">
-            <label>人员1：</label>
-            <input type="text" id="person1-input" style="padding: 8px; width: 120px;" placeholder="姓名">
-          </div>
-          <div style="margin: 10px 0;">
-            <label>人员2：</label>
-            <input type="text" id="person2-input" style="padding: 8px; width: 120px;" placeholder="姓名">
-          </div>
-          <div style="margin: 10px 0;">
-            <label>人员3：</label>
-            <input type="text" id="person3-input" style="padding: 8px; width: 120px;" placeholder="姓名">
-          </div>
-          <button onclick="savePersonsConfig()" style="padding: 8px 16px;">保存人员</button>
-        </div>
-        
-        <div class="settings-section" style="margin-top: 20px;">
-          <div class="settings-title">设备绑定管理</div>
-          <div id="bind-status" style="margin: 10px 0; color: #666;">加载中...</div>
-          <button class="clear-btn" style="background: #FF9800;" onclick="showUnbindModal()">🔓 解除设备绑定</button>
-        </div>
-        
-        <div class="settings-section" style="margin-top: 20px;">
-          <div class="settings-title">删除用户</div>
-          <div class="settings-warning">
-            ⚠️ 此操作将删除该用户及所有相关数据（每日记录、活动明细、人员等）<br>
-            删除后无法恢复！
-          </div>
-          <button class="clear-btn" style="background: #f44336;" onclick="showDeleteUserModal()">🗑️ 删除用户</button>
-        </div>
-        
-        <div class="settings-section" style="margin-top: 20px;">
-          <div class="settings-title">清除活动数据</div>
-          <div class="settings-warning">
-            ⚠️ 此操作将清空云端该用户的所有数据（每日记录、活动明细）<br>
-            清除后请在App端点击"从云端同步"以清空本地数据
-          </div>
-          <button class="clear-btn" onclick="showPasswordModal()">🗑️ 清除所有数据</button>
+          <div class="settings-title">用户列表 <button onclick="showAddUserModal()" style="float: right; padding: 6px 12px; font-size: 14px;">+ 新增用户</button></div>
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>设备编号</th>
+                <th>显示名称</th>
+                <th>时段配置</th>
+                <th>任务顺序</th>
+                <th>绑定状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${users.map(u => {
+                const userPersons = cachedData.persons?.filter(p => p.user_id === u.id) || [];
+                return `
+                  <tr>
+                    <td>${u.id}</td>
+                    <td>${u.display_name || '-'}</td>
+                    <td style="font-size: 12px;">
+                      上午: ${u.morning_start || '08:00'}-${u.morning_end || '11:30'}<br>
+                      下午: ${u.afternoon_start || '14:00'}-${u.afternoon_end || '18:00'}
+                    </td>
+                    <td style="font-size: 12px;">${(u.task_order || 'walk,step,stand,turn_head,raise_hand,clap,breath,say_good').split(',').slice(0, 3).join(',')}...</td>
+                    <td>${u.device_token ? '<span style="color: #4CAF50;">已绑定</span>' : '<span style="color: #FF9800;">未绑定</span>'}</td>
+                    <td>
+                      <button onclick="showEditUserModal('${u.id}')" style="padding: 4px 8px; font-size: 12px;">编辑</button>
+                      <button onclick="showDeleteUserModal('${u.id}')" style="padding: 4px 8px; font-size: 12px; background: #f44336; color: white;">删除</button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
         </div>
       `;
       
       panel.innerHTML = html;
-      loadUserSettings();
     }
     
-    function showDeleteUserModal() {
-      const userId = document.getElementById('user-select').value;
+    function showDeleteUserModal(userId) {
       const user = cachedData.users.find(u => u.id === userId);
       const displayName = user?.display_name || userId;
       
@@ -1110,7 +1054,7 @@
           alert('删除成功！');
           document.getElementById('delete-user-modal').remove();
           await loadData();
-          renderUserSettings(document.getElementById('settings-panel'));
+          renderUsersPanel(document.getElementById('settings-panel'));
         } else {
           alert(result.message || '删除失败');
         }
@@ -1118,168 +1062,55 @@
         alert('操作失败：' + e.message);
       }
     }
-    
-    async function renderGlobalSettings(panel) {
-      panel.innerHTML = '<div class="loading">加载中...</div>';
 
+    // ========== 人员管理 Tab ==========
+    function renderPersonsPanel(panel) {
+      const { users, persons } = cachedData;
+      
       let html = `
-        <div class="admin-tabs" style="display: flex; gap: 0; margin-bottom: 0; border-bottom: 1px solid #ddd;">
-          <button class="admin-tab-btn ${adminTab === 'users' ? 'active' : ''}" onclick="switchAdminTab('users', event)">用户管理</button>
-          <button class="admin-tab-btn ${adminTab === 'templates' ? 'active' : ''}" onclick="switchAdminTab('templates', event)">任务模板</button>
-          <button class="admin-tab-btn ${adminTab === 'prompts' ? 'active' : ''}" onclick="switchAdminTab('prompts', event)">提示语</button>
-        </div>
-        <div id="admin-panel" style="padding-top: 16px;"></div>
+        <div class="settings-section">
+          <div class="settings-title">人员管理 <button onclick="forceSyncPersons()" style="float: right; padding: 6px 12px; font-size: 14px;">强制同步</button></div>
+          <div style="color: #666; margin-bottom: 16px; font-size: 14px;">
+            提示：修改人员后，App 端会自动同步。删除人员后也需要同步。
+          </div>
       `;
-
+      
+      for (const user of users) {
+        const userPersons = (persons || []).filter(p => p.user_id === user.id);
+        html += `
+          <div style="border: 1px solid #eee; border-radius: 8px; margin-bottom: 16px; padding: 12px;">
+            <div style="font-weight: bold; margin-bottom: 8px; display: flex; justify-content: space-between;">
+              <span>${user.display_name || user.id}</span>
+              <button onclick="addPerson('${user.id}')" style="padding: 4px 8px; font-size: 12px;">+ 添加人员</button>
+            </div>
+            <div id="persons-list-${user.id}" style="display: flex; flex-wrap: wrap; gap: 8px;">
+              ${userPersons.length === 0 ? '<span style="color: #999;">暂无人员</span>' : 
+                userPersons.map(p => `
+                  <div style="background: #e3f2fd; padding: 6px 12px; border-radius: 16px; display: flex; align-items: center; gap: 8px;">
+                    <span>${p.person_name}</span>
+                    <button onclick="editPerson('${user.id}', ${p.person_index}, '${p.person_name}')" style="background: none; border: none; cursor: pointer; color: #1976D2;">✏️</button>
+                    <button onclick="deletePerson('${user.id}', ${p.person_index})" style="background: none; border: none; cursor: pointer; color: #f44336;">🗑️</button>
+                  </div>
+                `).join('')}
+            </div>
+          </div>
+        `;
+      }
+      
+      html += '</div>';
       panel.innerHTML = html;
-      loadAdminPanel();
-    }
-
-    let adminTab = 'users';
-
-    function switchAdminTab(tab, evt) {
-      adminTab = tab;
-      // 更新按钮样式
-      document.querySelectorAll('#settings-panel .admin-tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-      });
-      if (evt && evt.target) {
-        evt.target.classList.add('active');
-      }
-      loadAdminPanel();
     }
     
-    async function loadAdminPanel() {
-      const panel = document.getElementById('admin-panel');
-      if (!panel) return;
-      
-      if (adminTab === 'users') {
-        renderAdminUsers('admin-panel');
-      } else if (adminTab === 'templates') {
-        renderAdminTemplates('admin-panel');
-      } else {
-        renderAdminPrompts('admin-panel');
-      }
-    }
-    
-    async function loadUserSettings() {
-      const userId = document.getElementById('user-select').value;
+    async function addPerson(userId) {
+      const name = prompt('请输入人员姓名：');
+      if (!name || !name.trim()) return;
       
       try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=display_name,device_token,bound_at,morning_start,morning_end,afternoon_start,afternoon_end,debug_mode,say_good_enabled,morning_max_points,afternoon_max_points,points_to_yuan,show_money`, {
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-          }
-        });
+        const userPersons = (cachedData.persons || []).filter(p => p.user_id === userId);
+        const nextIndex = userPersons.length > 0 ? Math.max(...userPersons.map(p => p.person_index)) + 1 : 0;
         
-        const data = await res.json();
-        if (data && data.length > 0) {
-          const user = data[0];
-          
-          document.getElementById('morning-start-input').value = user.morning_start || '08:00';
-          document.getElementById('morning-end-input').value = user.morning_end || '11:30';
-          document.getElementById('afternoon-start-input').value = user.afternoon_start || '14:00';
-          document.getElementById('afternoon-end-input').value = user.afternoon_end || '18:00';
-          document.getElementById('debug-mode-input').checked = user.debug_mode || false;
-          document.getElementById('say-good-input').checked = user.say_good_enabled !== false;
-          
-          document.getElementById('morning-max-input').value = user.morning_max_points || 1500;
-          document.getElementById('afternoon-max-input').value = user.afternoon_max_points || 1500;
-          document.getElementById('points-to-yuan-input').value = user.points_to_yuan || 100;
-          document.getElementById('show-money-input').checked = user.show_money !== false;
-          
-          if (user.device_token) {
-            const boundTime = user.bound_at ? new Date(user.bound_at).toLocaleString('zh-CN') : '未知';
-            document.getElementById('bind-status').innerHTML = `<span style="color: #4CAF50;">✓ 已绑定</span>（绑定时间：${boundTime}）`;
-          } else {
-            document.getElementById('bind-status').innerHTML = `<span style="color: #FF9800;">○ 未绑定</span>`;
-          }
-          
-          // 加载人员
-          try {
-            const personsRes = await fetch(`${SUPABASE_URL}/rest/v1/persons?user_id=eq.${userId}&select=person_index,person_name&order=person_index`, {
-              headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
-              }
-            });
-            const persons = await personsRes.json();
-            document.getElementById('person1-input').value = '';
-            document.getElementById('person2-input').value = '';
-            document.getElementById('person3-input').value = '';
-            if (persons && persons.length > 0) {
-              persons.forEach(p => {
-                const input = document.getElementById(`person${p.person_index + 1}-input`);
-                if (input) input.value = p.person_name || '';
-              });
-            }
-          } catch (e) {
-            console.error('loadPersons error:', e);
-          }
-        }
-      } catch (e) {
-        console.error('loadUserSettings error:', e);
-      }
-    }
-    
-    async function saveDisplayName() {
-      const userId = document.getElementById('user-select').value;
-      const displayName = document.getElementById('display-name-input').value.trim();
-      
-      try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`, {
-          method: 'PATCH',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify({ display_name: displayName })
-        });
-        
-        if (res.ok) {
-          alert('保存成功！');
-          refreshData();
-        } else {
-          alert('保存失败');
-        }
-      } catch (e) {
-        alert('操作失败：' + e.message);
-      }
-    }
-    
-    async function saveConfig() {
-      const userId = document.getElementById('user-select').value;
-      const morningStart = document.getElementById('morning-start-input').value;
-      const morningEnd = document.getElementById('morning-end-input').value;
-      const afternoonStart = document.getElementById('afternoon-start-input').value;
-      const afternoonEnd = document.getElementById('afternoon-end-input').value;
-      const debugMode = document.getElementById('debug-mode-input').checked;
-      const sayGoodEnabled = document.getElementById('say-good-input').checked;
-      const morningMax = parseInt(document.getElementById('morning-max-input').value) || 1500;
-      const afternoonMax = parseInt(document.getElementById('afternoon-max-input').value) || 1500;
-      const pointsToYuan = parseInt(document.getElementById('points-to-yuan-input').value) || 100;
-      const showMoney = document.getElementById('show-money-input').checked;
-      
-      function timeToMinutes(t) {
-        const [h, m] = t.split(':').map(Number);
-        return h * 60 + m;
-      }
-      
-      if (timeToMinutes(morningEnd) <= timeToMinutes(morningStart)) {
-        alert('上午结束时间必须大于开始时间');
-        return;
-      }
-      if (timeToMinutes(afternoonEnd) <= timeToMinutes(afternoonStart)) {
-        alert('下午结束时间必须大于开始时间');
-        return;
-      }
-      
-      try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`, {
-          method: 'PATCH',
+        await fetch(`${SUPABASE_URL}/rest/v1/persons`, {
+          method: 'POST',
           headers: {
             'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -1287,42 +1118,51 @@
             'Prefer': 'return=minimal'
           },
           body: JSON.stringify({
-            morning_start: morningStart,
-            morning_end: morningEnd,
-            afternoon_start: afternoonStart,
-            afternoon_end: afternoonEnd,
-            debug_mode: debugMode,
-            say_good_enabled: sayGoodEnabled,
-            morning_max_points: morningMax,
-            afternoon_max_points: afternoonMax,
-            points_to_yuan: pointsToYuan,
-            show_money: showMoney
+            user_id: userId,
+            person_index: nextIndex,
+            person_name: name.trim()
           })
         });
         
-        if (res.ok) {
-          alert('配置保存成功！App端下次启动时将自动同步。');
-          await loadData();
-          loadUserSettings();
-        } else {
-          alert('保存失败');
-        }
+        await updatePersonsTimestamp(userId);
+        await loadData();
+        renderPersonsPanel(document.getElementById('settings-panel'));
+        alert('添加成功！');
       } catch (e) {
         alert('操作失败：' + e.message);
       }
     }
     
-    async function savePersonsConfig() {
-      const userId = document.getElementById('user-select').value;
-      const persons = [
-        { index: 0, name: document.getElementById('person1-input').value.trim() },
-        { index: 1, name: document.getElementById('person2-input').value.trim() },
-        { index: 2, name: document.getElementById('person3-input').value.trim() }
-      ];
+    async function editPerson(userId, personIndex, oldName) {
+      const name = prompt('请输入新姓名：', oldName);
+      if (!name || !name.trim()) return;
       
       try {
-        // 先删除旧数据
-        await fetch(`${SUPABASE_URL}/rest/v1/persons?user_id=eq.${userId}`, {
+        await fetch(`${SUPABASE_URL}/rest/v1/persons?user_id=eq.${userId}&person_index=eq.${personIndex}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({ person_name: name.trim() })
+        });
+        
+        await updatePersonsTimestamp(userId);
+        await loadData();
+        renderPersonsPanel(document.getElementById('settings-panel'));
+        alert('修改成功！');
+      } catch (e) {
+        alert('操作失败：' + e.message);
+      }
+    }
+    
+    async function deletePerson(userId, personIndex) {
+      if (!confirm('确定要删除此人员吗？')) return;
+      
+      try {
+        await fetch(`${SUPABASE_URL}/rest/v1/persons?user_id=eq.${userId}&person_index=eq.${personIndex}`, {
           method: 'DELETE',
           headers: {
             'apikey': SUPABASE_ANON_KEY,
@@ -1331,216 +1171,53 @@
           }
         });
         
-        // 插入新数据
-        for (const p of persons) {
-          if (p.name) {
-            await fetch(`${SUPABASE_URL}/rest/v1/persons`, {
-              method: 'POST',
-              headers: {
-                'apikey': SUPABASE_ANON_KEY,
-                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=minimal'
-              },
-              body: JSON.stringify({
-                user_id: userId,
-                person_index: p.index,
-                person_name: p.name
-              })
-            });
-          }
-        }
-        
-        alert('人员保存成功！App端下次启动时将自动同步。');
-      } catch (e) {
-        alert('操作失败：' + e.message);
-      }
-    }
-    
-    function showUnbindModal() {
-      document.getElementById('unbind-modal').classList.add('show');
-      document.getElementById('unbind-password-input').value = '';
-    }
-
-    function closeUnbindModal() {
-      document.getElementById('unbind-modal').classList.remove('show');
-    }
-
-    async function confirmUnbind() {
-      const password = document.getElementById('unbind-password-input').value;
-      const userId = document.getElementById('user-select').value;
-      
-      if (!password) {
-        alert('请输入密码');
-        return;
-      }
-      
-      try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/unbind_device`, {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            p_user_id: userId,
-            p_password: password
-          })
-        });
-        
-        const result = await res.json();
-        
-        if (result.success) {
-          alert('解绑成功！新设备可以重新绑定此ID。');
-          closeUnbindModal();
-          updateBindStatus();
-        } else {
-          alert(result.message || '解绑失败');
-        }
-      } catch (e) {
-        alert('操作失败：' + e.message);
-      }
-    }
-
-    function showPasswordModal() {
-      document.getElementById('password-modal').classList.add('show');
-      document.getElementById('password-input').value = '';
-    }
-
-    function closePasswordModal() {
-      document.getElementById('password-modal').classList.remove('show');
-    }
-
-    async function confirmClearData() {
-      const password = document.getElementById('password-input').value;
-      const userId = document.getElementById('user-select').value;
-      const keepPersons = document.getElementById('keep-persons-checkbox').checked;
-      
-      if (!password) {
-        alert('请输入密码');
-        return;
-      }
-      
-      try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/clear_all_data`, {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            p_user_id: userId,
-            p_password: password,
-            p_keep_persons: keepPersons
-          })
-        });
-        
-        const result = await res.json();
-        
-        if (result.success) {
-          alert('清除成功！请在App端点击"从云端同步"以清空本地数据。');
-          closePasswordModal();
-          refreshData();
-        } else {
-          alert(result.message || '清除失败');
-        }
-      } catch (e) {
-        alert('操作失败：' + e.message);
-      }
-    }
-
-    // 隐藏设置功能：连续点击标题5次显示/隐藏设置标签
-    let titleClickCount = 0;
-    let titleClickTimer = null;
-    let settingsVisible = false;
-    
-    document.getElementById('main-title').addEventListener('click', function() {
-      titleClickCount++;
-      
-      if (titleClickTimer) {
-        clearTimeout(titleClickTimer);
-      }
-      
-      titleClickTimer = setTimeout(function() {
-        titleClickCount = 0;
-      }, 2000);
-      
-      if (titleClickCount >= 5) {
-        settingsVisible = !settingsVisible;
-        const settingsTab = document.getElementById('settings-tab');
-        if (settingsVisible) {
-          settingsTab.classList.remove('hidden');
-        } else {
-          settingsTab.classList.add('hidden');
-          if (document.getElementById('settings-content').classList.contains('hidden') === false) {
-            switchTab('realtime');
-          }
-        }
-        titleClickCount = 0;
-      }
-    });
-
-    // ========== 管理页面 ==========
-    let cachedTemplates = [];
-    let cachedGlobalPrompts = [];
-    
-    // 用户管理
-    async function renderAdminUsers(panelId = 'admin-panel') {
-      const panel = document.getElementById(panelId);
-      panel.innerHTML = '<div class="loading">加载中...</div>';
-      
-      if (!cachedData) {
+        await updatePersonsTimestamp(userId);
         await loadData();
+        renderPersonsPanel(document.getElementById('settings-panel'));
+        alert('删除成功！');
+      } catch (e) {
+        alert('操作失败：' + e.message);
       }
-      
-      const { users, persons } = cachedData;
-      
-      let html = `
-        <div class="settings-section">
-          <div class="settings-title">用户列表 <button onclick="showAddUserModal()" style="float: right; padding: 6px 12px; font-size: 14px;">+ 新增用户</button></div>
-          <table class="admin-table">
-            <thead>
-              <tr>
-                <th>设备编号</th>
-                <th>显示名称</th>
-                <th>时段配置</th>
-                <th>任务顺序</th>
-                <th>绑定状态</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${users.map(u => {
-                const userPersons = persons.filter(p => p.user_id === u.id);
-                return `
-                  <tr>
-                    <td>${u.id}</td>
-                    <td>${u.display_name || '-'}</td>
-                    <td style="font-size: 12px;">
-                      上午: ${u.morning_start || '08:00'}-${u.morning_end || '11:30'}<br>
-                      下午: ${u.afternoon_start || '14:00'}-${u.afternoon_end || '18:00'}
-                    </td>
-                    <td style="font-size: 12px;">${(u.task_order || 'walk,step,stand,turn_head,raise_hand,clap,breath,say_good').split(',').slice(0, 3).join(',')}...</td>
-                    <td>${u.device_token ? '<span style="color: #4CAF50;">已绑定</span>' : '<span style="color: #FF9800;">未绑定</span>'}</td>
-                    <td>
-                      <button onclick="showEditUserModal('${u.id}')" style="padding: 4px 8px; font-size: 12px;">编辑</button>
-                    </td>
-                  </tr>
-                `;
-              }).join('')}
-            </tbody>
-          </table>
-        </div>
-      `;
-      
-      panel.innerHTML = html;
     }
     
-    // 任务模板管理
-    async function renderAdminTemplates(panelId = 'admin-panel') {
-      const panel = document.getElementById(panelId);
+    async function updatePersonsTimestamp(userId) {
+      const now = new Date().toISOString();
+      await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ persons_updated_at: now })
+      });
+    }
+    
+    async function forceSyncPersons() {
+      if (!confirm('确定要强制同步人员数据吗？这将刷新所有用户的 persons_updated_at，触发所有 App 端重新同步人员数据。')) return;
+      
+      const now = new Date().toISOString();
+      const { users } = cachedData;
+      
+      for (const user of users) {
+        await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${user.id}`, {
+          method: 'PATCH',
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify({ persons_updated_at: now })
+        });
+      }
+      
+      alert('强制同步成功！');
+    }
+
+    // ========== 任务模板 Tab ==========
+    async function renderTemplatesPanel(panel) {
       panel.innerHTML = '<div class="loading">加载中...</div>';
       
       try {
@@ -1564,7 +1241,7 @@
       
       let html = `
         <div class="settings-section">
-          <div class="settings-title">任务模板配置 <button onclick="forceSyncTable('task_templates')" style="float: right; padding: 6px 12px; font-size: 14px;">强制同步</button></div>
+          <div class="settings-title">任务模板配置 <button onclick="forceSyncTemplates()" style="float: right; padding: 6px 12px; font-size: 14px;">强制同步</button></div>
           <table class="admin-table">
             <thead>
               <tr>
@@ -1597,9 +1274,26 @@
       panel.innerHTML = html;
     }
     
-    // 提示语管理
-    async function renderAdminPrompts(panelId = 'admin-panel') {
-      const panel = document.getElementById(panelId);
+    async function forceSyncTemplates() {
+      if (!confirm('确定要强制同步任务模板吗？这将刷新所有用户的 task_templates_updated_at，触发所有 App 端重新同步任务模板数据。')) return;
+      
+      const now = new Date().toISOString();
+      await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ task_templates_updated_at: now })
+      });
+      
+      alert('强制同步成功！');
+    }
+
+    // ========== 提示语 Tab ==========
+    async function renderPromptsPanel(panel) {
       panel.innerHTML = '<div class="loading">加载中...</div>';
       
       try {
@@ -1617,7 +1311,7 @@
       
       let html = `
         <div class="settings-section">
-          <div class="settings-title">全局提示语 <button onclick="forceSyncTable('global_prompts')" style="float: right; padding: 6px 12px; font-size: 14px;">强制同步</button></div>
+          <div class="settings-title">全局提示语 <button onclick="forceSyncPrompts()" style="float: right; padding: 6px 12px; font-size: 14px;">强制同步</button></div>
           <table class="admin-table">
             <thead>
               <tr>
@@ -1642,7 +1336,59 @@
       panel.innerHTML = html;
     }
     
+    async function forceSyncPrompts() {
+      if (!confirm('确定要强制同步提示语吗？这将刷新所有用户的 global_prompts_updated_at，触发所有 App 端重新同步提示语数据。')) return;
+      
+      const now = new Date().toISOString();
+      await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+        method: 'PATCH',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ global_prompts_updated_at: now })
+      });
+      
+      alert('强制同步成功！');
+    }
+    
+
+    // 隐藏设置功能：连续点击标题5次显示/隐藏设置标签
+    let titleClickCount = 0;
+    let titleClickTimer = null;
+    let settingsVisible = false;
+    
+    document.getElementById('main-title').addEventListener('click', function() {
+      titleClickCount++;
+      
+      if (titleClickTimer) {
+        clearTimeout(titleClickTimer);
+      }
+      
+      titleClickTimer = setTimeout(function() {
+        titleClickCount = 0;
+      }, 2000);
+      
+      if (titleClickCount >= 5) {
+        settingsVisible = !settingsVisible;
+        const settingsTab = document.getElementById('settings-tab');
+        if (settingsVisible) {
+          settingsTab.classList.remove('hidden');
+        } else {
+          settingsTab.classList.add('hidden');
+          if (document.getElementById('settings-content').classList.contains('hidden') === false) {
+            switchTab('realtime');
+          }
+        }
+        titleClickCount = 0;
+      }
+    });
+
     // ========== 弹窗 ==========
+    let cachedTemplates = [];
+    let cachedGlobalPrompts = [];
     
     // 新增用户弹窗
     function showAddUserModal() {
@@ -1847,10 +1593,10 @@
         });
         
         if (res.ok) {
-          alert('保存成功！');
+          alert('保存成功！App端下次启动时将自动同步。');
           document.getElementById('edit-user-modal').remove();
           await loadData();
-          renderAdminUsers();
+          renderUsersPanel(document.getElementById('settings-panel'));
         } else {
           alert('保存失败');
         }
@@ -1993,9 +1739,22 @@
         });
         
         if (res.ok) {
+          // 更新所有用户的 task_templates_updated_at
+          const now = new Date().toISOString();
+          await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({ task_templates_updated_at: now })
+          });
+          
           alert('保存成功！');
           document.getElementById('template-modal').remove();
-          renderAdminTemplates();
+          renderTemplatesPanel(document.getElementById('settings-panel'));
         } else {
           alert('保存失败');
         }
@@ -2042,60 +1801,24 @@
         });
         
         if (res.ok) {
+          // 更新所有用户的 global_prompts_updated_at
+          const now = new Date().toISOString();
+          await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+            method: 'PATCH',
+            headers: {
+              'apikey': SUPABASE_ANON_KEY,
+              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'Content-Type': 'application/json',
+              'Prefer': 'return=minimal'
+            },
+            body: JSON.stringify({ global_prompts_updated_at: now })
+          });
+          
           alert('保存成功！');
           document.getElementById('prompt-modal').remove();
-          renderAdminPrompts();
+          renderPromptsPanel(document.getElementById('settings-panel'));
         } else {
           alert('保存失败');
-        }
-      } catch (e) {
-        alert('操作失败：' + e.message);
-      }
-    }
-
-    // 强制同步表（刷新 updated_at）
-    async function forceSyncTable(tableName) {
-      if (!confirm(`确定要强制同步 ${tableName} 表吗？这将刷新该表的更新时间，触发所有 App 端重新同步该表数据。`)) {
-        return;
-      }
-      
-      try {
-        const now = new Date().toISOString();
-        
-        if (tableName === 'task_templates') {
-          const res = await fetch(`${SUPABASE_URL}/rest/v1/task_templates`, {
-            method: 'PATCH',
-            headers: {
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({ updated_at: now })
-          });
-          
-          if (res.ok) {
-            alert('强制同步成功！所有 App 端将在下次同步时重新获取任务模板数据。');
-          } else {
-            alert('操作失败');
-          }
-        } else if (tableName === 'global_prompts') {
-          const res = await fetch(`${SUPABASE_URL}/rest/v1/global_prompts`, {
-            method: 'PATCH',
-            headers: {
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=minimal'
-            },
-            body: JSON.stringify({ updated_at: now })
-          });
-          
-          if (res.ok) {
-            alert('强制同步成功！所有 App 端将在下次同步时重新获取全局提示语数据。');
-          } else {
-            alert('操作失败');
-          }
         }
       } catch (e) {
         alert('操作失败：' + e.message);
