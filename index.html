@@ -1775,7 +1775,7 @@
                   <label style="font-size: 13px; color: #666;">进度提示 <span style="color: #999;">({current}=已进行, {remaining}=剩余)</span>：</label><br>
                   <input type="text" id="prompt-progress" value="${progress}" style="width: 100%; padding: 6px; font-size: 13px;">
                 </div>
-                ` : '<input type="hidden" id="prompt-progress" value="">'}
+                ` : `<input type="hidden" id="prompt-progress" value="${progress}">`}
               </div>
             </div>
             
@@ -1819,7 +1819,7 @@
         max_speed: parseInt(document.getElementById('template-max-speed').value) || 0,
         min_interval: parseInt(document.getElementById('template-min-interval').value) || 0,
         pause_threshold: parseInt(document.getElementById('template-pause-threshold').value) || 0,
-        prompt_config: JSON.stringify(promptConfig),
+        prompt_config: promptConfig,
         updated_at: new Date().toISOString()
       };
       
@@ -1830,12 +1830,14 @@
             'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
+            'Prefer': 'return=representation'
           },
           body: JSON.stringify(data)
         });
         
-        if (res.ok) {
+        const result = await res.json();
+        
+        if (res.ok && result && result.length > 0) {
           // 更新所有用户的 task_templates_updated_at
           const now = new Date().toISOString();
           await fetch(`${SUPABASE_URL}/rest/v1/users`, {
@@ -1853,7 +1855,7 @@
           document.getElementById('template-modal').remove();
           renderTemplatesPanel(document.getElementById('settings-panel'));
         } else {
-          alert('保存失败');
+          alert('保存失败: ' + (JSON.stringify(result) || '未找到匹配记录'));
         }
       } catch (e) {
         alert('操作失败：' + e.message);
@@ -1892,12 +1894,14 @@
             'apikey': SUPABASE_ANON_KEY,
             'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
             'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
+            'Prefer': 'return=representation'
           },
           body: JSON.stringify({ value: value, updated_at: new Date().toISOString() })
         });
         
-        if (res.ok) {
+        const result = await res.json();
+        
+        if (res.ok && result && result.length > 0) {
           // 更新所有用户的 global_prompts_updated_at
           const now = new Date().toISOString();
           await fetch(`${SUPABASE_URL}/rest/v1/users`, {
@@ -1915,7 +1919,7 @@
           document.getElementById('prompt-modal').remove();
           renderPromptsPanel(document.getElementById('settings-panel'));
         } else {
-          alert('保存失败');
+          alert('保存失败: ' + (JSON.stringify(result) || '未找到匹配记录'));
         }
       } catch (e) {
         alert('操作失败：' + e.message);
