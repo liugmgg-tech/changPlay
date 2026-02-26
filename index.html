@@ -1565,14 +1565,17 @@
       document.getElementById('edit-task-order').value = order.join(',');
     }
     
-    // 初始化拖拽排序
+    // 初始化拖拽排序（支持鼠标和触摸）
     function initTaskDragSort() {
       const list = document.getElementById('task-order-list');
       if (!list) return;
       
       let draggedItem = null;
+      let touchStartY = 0;
+      let touchCurrentY = 0;
       
       list.querySelectorAll('.task-order-item').forEach(item => {
+        // 鼠标拖拽事件
         item.addEventListener('dragstart', function(e) {
           draggedItem = this;
           this.style.opacity = '0.5';
@@ -1590,6 +1593,35 @@
             list.appendChild(draggedItem);
           } else {
             list.insertBefore(draggedItem, afterElement);
+          }
+        });
+        
+        // 触摸事件（手机端）
+        item.addEventListener('touchstart', function(e) {
+          draggedItem = this;
+          touchStartY = e.touches[0].clientY;
+          touchCurrentY = touchStartY;
+          this.style.opacity = '0.5';
+          this.style.background = '#e0e0e0';
+        }, { passive: true });
+        
+        item.addEventListener('touchmove', function(e) {
+          if (!draggedItem) return;
+          touchCurrentY = e.touches[0].clientY;
+          const afterElement = getDragAfterElement(list, touchCurrentY);
+          if (afterElement == null) {
+            list.appendChild(draggedItem);
+          } else {
+            list.insertBefore(draggedItem, afterElement);
+          }
+        }, { passive: true });
+        
+        item.addEventListener('touchend', function(e) {
+          if (draggedItem === this) {
+            this.style.opacity = '';
+            this.style.background = '';
+            updateTaskOrderFromList();
+            draggedItem = null;
           }
         });
       });
@@ -1694,7 +1726,7 @@
             <div style="margin-bottom: 12px;">
               <label>${durationOrCountLabel}</label>
               <input type="number" id="${durationOrCountId}" value="${durationOrCountValue}" style="width: 80px; padding: 6px;" placeholder="${durationOrCountPlaceholder}">
-              <input type="hidden" id="${isSayGood ? 'template-duration' : 'template-count'}" value="0">
+              <input type="hidden" id="${isSayGood ? 'template-duration' : 'template-count'}" value="${isSayGood ? (template.duration || 0) : (template.count || 0)}">
             </div>
             <div style="margin-bottom: 12px;">
               <label>固定积分：</label>
@@ -1787,7 +1819,8 @@
         max_speed: parseInt(document.getElementById('template-max-speed').value) || 0,
         min_interval: parseInt(document.getElementById('template-min-interval').value) || 0,
         pause_threshold: parseInt(document.getElementById('template-pause-threshold').value) || 0,
-        prompt_config: promptConfig
+        prompt_config: JSON.stringify(promptConfig),
+        updated_at: new Date().toISOString()
       };
       
       try {
@@ -1861,7 +1894,7 @@
             'Content-Type': 'application/json',
             'Prefer': 'return=minimal'
           },
-          body: JSON.stringify({ value: value })
+          body: JSON.stringify({ value: value, updated_at: new Date().toISOString() })
         });
         
         if (res.ok) {
