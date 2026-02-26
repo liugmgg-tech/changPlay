@@ -1523,7 +1523,7 @@
               <label style="margin-left: 16px;"><input type="checkbox" id="edit-debug-mode" ${user.debug_mode ? 'checked' : ''}> 调试模式</label>
             </div>
             <div style="margin-bottom: 12px;">
-              <label>任务顺序（勾选启用，拖拽排序）：</label>
+              <label>任务顺序（勾选启用，<span style="color:#1976d2;">长按</span>拖拽排序）：</label>
               <div id="task-order-list" style="margin-top: 8px;">
                 ${currentOrder.map((t, idx) => `
                   <div class="task-order-item" data-task="${t}" draggable="true" style="display: flex; align-items: center; padding: 8px 12px; margin-bottom: 4px; background: #f5f5f5; border-radius: 4px; cursor: move;">
@@ -1569,23 +1569,26 @@
     function initTaskDragSort() {
       const list = document.getElementById('task-order-list');
       if (!list) return;
-      
+
       let draggedItem = null;
       let touchStartY = 0;
-      let touchCurrentY = 0;
-      
+      let touchStartX = 0;
+      let isDragging = false;
+      let longPressTimer = null;
+      let placeholder = null;
+
       list.querySelectorAll('.task-order-item').forEach(item => {
         // 鼠标拖拽事件
         item.addEventListener('dragstart', function(e) {
           draggedItem = this;
           this.style.opacity = '0.5';
         });
-        
+
         item.addEventListener('dragend', function(e) {
           this.style.opacity = '';
           updateTaskOrderFromList();
         });
-        
+
         item.addEventListener('dragover', function(e) {
           e.preventDefault();
           const afterElement = getDragAfterElement(list, e.clientY);
@@ -1595,34 +1598,77 @@
             list.insertBefore(draggedItem, afterElement);
           }
         });
-        
-        // 触摸事件（手机端）
+
+        // 触摸事件（手机端）- 长按开始拖拽
         item.addEventListener('touchstart', function(e) {
           draggedItem = this;
           touchStartY = e.touches[0].clientY;
-          touchCurrentY = touchStartY;
-          this.style.opacity = '0.5';
-          this.style.background = '#e0e0e0';
+          touchStartX = e.touches[0].clientX;
+          isDragging = false;
+
+          // 长按300ms后开始拖拽
+          longPressTimer = setTimeout(() => {
+            isDragging = true;
+            draggedItem.style.opacity = '0.5';
+            draggedItem.style.background = '#e3f2fd';
+            draggedItem.style.transform = 'scale(1.02)';
+            draggedItem.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+            // 震动反馈（如果支持）
+            if (navigator.vibrate) navigator.vibrate(50);
+          }, 300);
         }, { passive: true });
-        
+
         item.addEventListener('touchmove', function(e) {
           if (!draggedItem) return;
-          touchCurrentY = e.touches[0].clientY;
-          const afterElement = getDragAfterElement(list, touchCurrentY);
-          if (afterElement == null) {
-            list.appendChild(draggedItem);
-          } else {
-            list.insertBefore(draggedItem, afterElement);
+
+          const touch = e.touches[0];
+          const moveY = Math.abs(touch.clientY - touchStartY);
+          const moveX = Math.abs(touch.clientX - touchStartX);
+
+          // 移动超过10px取消长按计时，避免误触拖拽
+          if (!isDragging && (moveY > 10 || moveX > 10)) {
+            clearTimeout(longPressTimer);
+            return;
           }
-        }, { passive: true });
-        
+
+          // 正在拖拽时阻止页面滚动
+          if (isDragging) {
+            e.preventDefault();
+            const afterElement = getDragAfterElement(list, touch.clientY);
+            if (afterElement == null) {
+              list.appendChild(draggedItem);
+            } else {
+              list.insertBefore(draggedItem, afterElement);
+            }
+            touchStartY = touch.clientY; // 更新位置
+          }
+        }, { passive: false });
+
         item.addEventListener('touchend', function(e) {
-          if (draggedItem === this) {
+          clearTimeout(longPressTimer);
+
+          if (isDragging && draggedItem === this) {
             this.style.opacity = '';
             this.style.background = '';
+            this.style.transform = '';
+            this.style.boxShadow = '';
             updateTaskOrderFromList();
-            draggedItem = null;
           }
+
+          isDragging = false;
+          draggedItem = null;
+        });
+
+        item.addEventListener('touchcancel', function(e) {
+          clearTimeout(longPressTimer);
+          if (draggedItem) {
+            draggedItem.style.opacity = '';
+            draggedItem.style.background = '';
+            draggedItem.style.transform = '';
+            draggedItem.style.boxShadow = '';
+          }
+          isDragging = false;
+          draggedItem = null;
         });
       });
     }
