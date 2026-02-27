@@ -475,6 +475,13 @@
       color: #e65100;
       margin-bottom: 8px;
     }
+    
+    /* 手机端隐藏 */
+    @media (max-width: 600px) {
+      .hide-mobile {
+        display: none !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1021,7 +1028,7 @@
               <tr>
                 <th>设备编号</th>
                 <th>显示名称</th>
-                <th>时段配置</th>
+                <th class="hide-mobile">时段配置</th>
                 <th>绑定状态</th>
                 <th>操作</th>
               </tr>
@@ -1033,7 +1040,7 @@
                   <tr>
                     <td>${u.id}</td>
                     <td>${u.display_name || '-'}</td>
-                    <td style="font-size: 12px;">
+                    <td class="hide-mobile" style="font-size: 12px;">
                       上午: ${u.morning_start || '08:00'}-${u.morning_end || '11:30'}<br>
                       下午: ${u.afternoon_start || '14:00'}-${u.afternoon_end || '18:00'}
                     </td>
@@ -1311,7 +1318,6 @@
                 <th>名称</th>
                 <th>时长/次数</th>
                 <th>积分</th>
-                <th>速度阈值</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -1322,7 +1328,6 @@
                   <td>${t.task_name || taskNames[t.task_type] || '-'}</td>
                   <td>${t.task_type === 'say_good' ? (t.count || 0) + '次' : (t.duration || 0) + '分钟'}</td>
                   <td>${t.points || 0}</td>
-                  <td>${t.max_speed || 0}</td>
                   <td><button onclick="showEditTemplateModal('${t.task_type}')" style="padding: 4px 8px; font-size: 12px;">编辑</button></td>
                 </tr>
               `).join('')}
