@@ -1883,33 +1883,35 @@
     
     async function confirmUnbind() {
       const password = document.getElementById('unbind-password-input').value;
-      if (password !== ADMIN_PASSWORD) {
-        alert('密码错误');
+      if (!password) {
+        alert('请输入密码');
         return;
       }
       
       try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${currentUserId}`, {
-          method: 'PATCH',
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/unbind_device`, {
+          method: 'POST',
           headers: {
             'apikey': SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            device_token: null,
-            updated_at: new Date().toISOString()
+            p_user_id: currentUserId,
+            p_password: password
           })
         });
         
-        if (res.ok) {
+        const result = await res.json();
+        
+        if (result.success) {
           alert('解绑成功！');
           closeUnbindModal();
           document.getElementById('edit-user-modal')?.remove();
           await loadData();
           renderUsersPanel(document.getElementById('settings-panel'));
         } else {
-          alert('解绑失败');
+          alert(result.message || '解绑失败');
         }
       } catch (e) {
         alert('操作失败：' + e.message);
@@ -1924,8 +1926,8 @@
     
     async function confirmClearData() {
       const password = document.getElementById('clear-password-input').value;
-      if (password !== ADMIN_PASSWORD) {
-        alert('密码错误');
+      if (!password) {
+        alert('请输入密码');
         return;
       }
       
@@ -1934,29 +1936,31 @@
       }
       
       try {
-        // 删除每日记录
-        await fetch(`${SUPABASE_URL}/rest/v1/daily_records?user_id=eq.${currentUserId}`, {
-          method: 'DELETE',
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/clear_all_data`, {
+          method: 'POST',
           headers: {
             'apikey': SUPABASE_ANON_KEY,
-            'Prefer': 'return=minimal'
-          }
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            p_user_id: currentUserId,
+            p_password: password,
+            p_keep_persons: true
+          })
         });
         
-        // 删除活动明细
-        await fetch(`${SUPABASE_URL}/rest/v1/activities?user_id=eq.${currentUserId}`, {
-          method: 'DELETE',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Prefer': 'return=minimal'
-          }
-        });
+        const result = await res.json();
         
-        alert('数据清除成功！');
-        closePasswordModal();
-        document.getElementById('edit-user-modal')?.remove();
-        await loadData();
-        renderUsersPanel(document.getElementById('settings-panel'));
+        if (result.success) {
+          alert('数据清除成功！');
+          closePasswordModal();
+          document.getElementById('edit-user-modal')?.remove();
+          await loadData();
+          renderUsersPanel(document.getElementById('settings-panel'));
+        } else {
+          alert(result.message || '清除失败');
+        }
       } catch (e) {
         alert('操作失败：' + e.message);
       }
