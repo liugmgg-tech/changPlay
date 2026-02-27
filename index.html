@@ -1636,12 +1636,24 @@
       initTaskDragSort();
     }
     
-    // 抽屉切换
+    // 抽屉切换（手风琴模式：同一容器内只能打开一个）
     function toggleDrawer(drawerId) {
       const drawer = document.getElementById(drawerId);
-      if (drawer) {
-        drawer.classList.toggle('collapsed');
+      if (!drawer) return;
+      
+      const isCurrentlyCollapsed = drawer.classList.contains('collapsed');
+      
+      // 如果当前是收起状态，要展开它，则先关闭同级其他抽屉
+      if (isCurrentlyCollapsed) {
+        const siblings = drawer.parentElement.querySelectorAll('.drawer');
+        siblings.forEach(sibling => {
+          if (sibling !== drawer) {
+            sibling.classList.add('collapsed');
+          }
+        });
       }
+      
+      drawer.classList.toggle('collapsed');
     }
     
     function updateTaskOrderFromList() {
