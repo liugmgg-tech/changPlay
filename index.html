@@ -1011,7 +1011,9 @@
         btn.classList.remove('active');
       });
       if (evt && evt.target) {
-        evt.target.classList.add('active');
+        // 使用closest获取按钮元素（因为点击可能是内部span）
+        const btn = evt.target.closest('.admin-tab-btn');
+        if (btn) btn.classList.add('active');
       }
       loadSettingsPanel();
     }
