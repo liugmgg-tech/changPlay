@@ -481,6 +481,21 @@
       .hide-mobile {
         display: none !important;
       }
+      .full-text {
+        display: none;
+      }
+      .short-text {
+        display: inline;
+      }
+    }
+    
+    @media (min-width: 601px) {
+      .full-text {
+        display: inline;
+      }
+      .short-text {
+        display: none;
+      }
     }
   </style>
 </head>
@@ -977,10 +992,10 @@
 
       let html = `
         <div class="admin-tabs" style="display: flex; gap: 0; margin-bottom: 0; border-bottom: 1px solid #ddd;">
-          <button class="admin-tab-btn ${settingsTab === 'users' ? 'active' : ''}" onclick="switchSettingsTab('users', event)">用户配置</button>
-          <button class="admin-tab-btn ${settingsTab === 'persons' ? 'active' : ''}" onclick="switchSettingsTab('persons', event)">分账人员管理</button>
-          <button class="admin-tab-btn ${settingsTab === 'templates' ? 'active' : ''}" onclick="switchSettingsTab('templates', event)">任务模板</button>
-          <button class="admin-tab-btn ${settingsTab === 'prompts' ? 'active' : ''}" onclick="switchSettingsTab('prompts', event)">提示语</button>
+          <button class="admin-tab-btn ${settingsTab === 'users' ? 'active' : ''}" onclick="switchSettingsTab('users', event)"><span class="full-text">用户配置</span><span class="short-text">用户</span></button>
+          <button class="admin-tab-btn ${settingsTab === 'persons' ? 'active' : ''}" onclick="switchSettingsTab('persons', event)"><span class="full-text">分账人员管理</span><span class="short-text">分账管理</span></button>
+          <button class="admin-tab-btn ${settingsTab === 'templates' ? 'active' : ''}" onclick="switchSettingsTab('templates', event)"><span class="full-text">任务模板</span><span class="short-text">任务模板</span></button>
+          <button class="admin-tab-btn ${settingsTab === 'prompts' ? 'active' : ''}" onclick="switchSettingsTab('prompts', event)"><span class="full-text">提示语</span><span class="short-text">提示语</span></button>
         </div>
         <div id="settings-panel" style="padding-top: 16px;"></div>
       `;
