@@ -976,8 +976,8 @@
                     <td>
                       <button onclick="showEditUserModal('${u.id}')" style="padding: 4px 8px; font-size: 12px;">编辑</button>
                       ${u.device_token ? `<button onclick="currentUserId='${u.id}'; document.getElementById('unbind-modal').classList.add('show')" style="padding: 4px 8px; font-size: 12px; background: #ff9800; color: white;">解绑</button>` : ''}
-                      ${u.device_token ? `<button onclick="currentUserId='${u.id}'; document.getElementById('clear-data-modal').classList.add('show')" style="padding: 4px 8px; font-size: 12px; background: #f44336; color: white;">清除</button>` : ''}
-                      <button onclick="showDeleteUserModal('${u.id}')" style="padding: 4px 8px; font-size: 12px; background: #9e9e9e; color: white;">删除</button>
+                      ${u.device_token ? `<button onclick="currentUserId='${u.id}'; document.getElementById('clear-data-modal').classList.add('show')" style="padding: 4px 8px; font-size: 12px; background: #ff9800; color: white;">清除</button>` : ''}
+                      <button onclick="showDeleteUserModal('${u.id}')" style="padding: 4px 8px; font-size: 12px; background: #f44336; color: white;">删除</button>
                     </td>
                   </tr>
                 `;
