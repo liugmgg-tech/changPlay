@@ -1847,7 +1847,6 @@
       
       // 根据任务类型决定显示次数还是时长
       const isSayGood = taskType === 'say_good';
-      const showProgress = taskType === 'walk' || taskType === 'step';
       const durationOrCountLabel = isSayGood ? '次数：' : '时长（分钟）：';
       const durationOrCountValue = isSayGood ? (template.count || 0) : (template.duration || 0);
       const durationOrCountId = isSayGood ? 'template-count' : 'template-duration';
@@ -1863,7 +1862,7 @@
             </div>
             <div style="margin-bottom: 12px;">
               <label>${durationOrCountLabel}</label>
-              <input type="number" id="${durationOrCountId}" value="${durationOrCountValue}" style="width: 80px; padding: 6px;" placeholder="${durationOrCountPlaceholder}">
+              <input type="number" id="${durationOrCountId}" value="${durationOrCountValue}" style="width: 80px; padding: 6px;" placeholder="${durationOrCountPlaceholder}" onchange="updateProgressInputState()" oninput="updateProgressInputState()">
               <input type="hidden" id="${isSayGood ? 'template-duration' : 'template-count'}" value="${isSayGood ? (template.duration || 0) : (template.count || 0)}">
             </div>
             <div style="margin-bottom: 12px;">
@@ -1908,10 +1907,10 @@
                   <label style="font-size: 13px; color: #666;">完成提示 <span style="color: #999;">({points}=积分)</span>：</label><br>
                   <input type="text" id="prompt-completed" value="${completed}" style="width: 100%; padding: 6px; font-size: 13px;">
                 </div>
-                ${showProgress ? `
+                ${!isSayGood ? `
                 <div style="margin-bottom: 10px;">
-                  <label style="font-size: 13px; color: #666;">进度提示 <span style="color: #999;">({current}=已进行, {remaining}=剩余)</span>：</label><br>
-                  <input type="text" id="prompt-progress" value="${progress}" style="width: 100%; padding: 6px; font-size: 13px;">
+                  <label style="font-size: 13px; color: #666;">进度提示 <span style="color: #999;">({current}=已进行, {remaining}=剩余，时长需≥2分钟生效)</span>：</label><br>
+                  <input type="text" id="prompt-progress" value="${progress}" style="width: 100%; padding: 6px; font-size: 13px;" ${durationOrCountValue < 2 ? 'disabled style="background: #f0f0f0; color: #999;"' : ''}>
                 </div>
                 ` : `<input type="hidden" id="prompt-progress" value="${progress}">`}
               </div>
@@ -1925,6 +1924,24 @@
         </div>
       `;
       document.body.insertAdjacentHTML('beforeend', html);
+    }
+    
+    // 更新进度提示输入框的禁用状态（根据时长联动）
+    function updateProgressInputState() {
+      const progressInput = document.getElementById('prompt-progress');
+      const durationInput = document.getElementById('template-duration');
+      if (progressInput && durationInput) {
+        const duration = parseInt(durationInput.value) || 0;
+        if (duration < 2) {
+          progressInput.disabled = true;
+          progressInput.style.background = '#f0f0f0';
+          progressInput.style.color = '#999';
+        } else {
+          progressInput.disabled = false;
+          progressInput.style.background = '';
+          progressInput.style.color = '';
+        }
+      }
     }
     
     function togglePromptConfig() {
