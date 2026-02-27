@@ -1029,7 +1029,7 @@
                 <th>设备编号</th>
                 <th>显示名称</th>
                 <th class="hide-mobile">时段配置</th>
-                <th>绑定状态</th>
+                <th class="hide-mobile">绑定状态</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -1044,7 +1044,7 @@
                       上午: ${u.morning_start || '08:00'}-${u.morning_end || '11:30'}<br>
                       下午: ${u.afternoon_start || '14:00'}-${u.afternoon_end || '18:00'}
                     </td>
-                    <td>${u.device_token ? '<span style="color: #4CAF50;">已绑定</span>' : '<span style="color: #FF9800;">未绑定</span>'}</td>
+                    <td class="hide-mobile">${u.device_token ? '<span style="color: #4CAF50;">已绑定</span>' : '<span style="color: #FF9800;">未绑定</span>'}</td>
                     <td>
                       <button onclick="showEditUserModal('${u.id}')" style="padding: 4px 8px; font-size: 12px;">编辑</button>
                       ${u.device_token ? `<button onclick="currentUserId='${u.id}'; document.getElementById('unbind-modal').classList.add('show')" style="padding: 4px 8px; font-size: 12px; background: #ff9800; color: white;">解绑</button>` : ''}
