@@ -559,14 +559,82 @@
     const SUPABASE_ANON_KEY = CLOUD_CONFIG.key;
 
     const activityNames = {
-      'walk': '散步',
-      'step': '摆手臂',
-      'stand': '举手放下',
-      'turn_head': '转头',
-      'raise_hand': '举手',
-      'clap': '鼓掌',
-      'breath': '深呼吸',
-      'say_good': '说好'
+      'walk': '散步 📱',
+      'step': '摆手臂 📱',
+      'stand': '举放手机 📱',
+      'turn_head': '转头 📷',
+      'raise_hand': '举手 📷',
+      'clap': '鼓掌 📷',
+      'breath': '深呼吸 🎤',
+      'say_good': '说"好" 🎤'
+    };
+
+    // 缺省提示语配置（与云端数据库和App端PromptManager.kt保持一致）
+    const DEFAULT_PROMPTS = {
+      walk: {
+        task_intro: '请散步走路，拿着手机，持续{duration}分钟',
+        too_fast: '太快了，请慢一点',
+        paused: '请继续',
+        in_progress: '正在散步...',
+        completed: '太好了，获得{points}积分',
+        progress: '已进行{current}分钟，还剩{remaining}分钟'
+      },
+      step: {
+        task_intro: '请坐在凳子上或站着或走动，拿着手机，前后摆动双臂，持续{duration}分钟',
+        too_fast: '太快了，请慢一点',
+        paused: '请继续',
+        in_progress: '正在摆手臂...',
+        completed: '太好了，获得{points}积分',
+        progress: '已进行{current}分钟，还剩{remaining}分钟'
+      },
+      stand: {
+        task_intro: '请坐在凳子上，拿着手机，举起来放下去，重复做{duration}分钟',
+        too_fast: '太快了，请慢一点',
+        paused: '请继续',
+        in_progress: '正在举手放下...',
+        completed: '太好了，获得{points}积分',
+        progress: '已进行{current}分钟，还剩{remaining}分钟'
+      },
+      turn_head: {
+        task_intro: '请坐在凳子上，把手机放在桌上对着自己，持续左右转头，像摇头一样，持续{duration}分钟',
+        too_fast: '太快了，请慢一点',
+        paused: '请继续',
+        in_progress: '正在转头...',
+        completed: '太好了，获得{points}积分',
+        progress: '已进行{current}分钟，还剩{remaining}分钟'
+      },
+      raise_hand: {
+        task_intro: '请坐在凳子上，把手机放在桌上对着自己，持续举双手、单手或双手交替，举起来放下去，重复做{duration}分钟',
+        too_fast: '太快了，请慢一点',
+        paused: '请继续',
+        in_progress: '正在举手...',
+        completed: '太好了，获得{points}积分',
+        progress: '已进行{current}分钟，还剩{remaining}分钟'
+      },
+      clap: {
+        task_intro: '请坐在凳子上，把手机放在桌上对着自己，持续鼓掌，拍手，持续{duration}分钟',
+        too_fast: '太快了，请慢一点',
+        paused: '请继续',
+        in_progress: '正在鼓掌...',
+        completed: '太好了，获得{points}积分',
+        progress: '已进行{current}分钟，还剩{remaining}分钟'
+      },
+      breath: {
+        task_intro: '请坐在凳子上，把手机放在桌上对着自己，持续做深呼吸，吸气呼气，持续{duration}分钟',
+        too_fast: '太快了，请慢一点',
+        paused: '请继续',
+        in_progress: '正在呼吸...',
+        completed: '太好了，获得{points}积分',
+        progress: '已进行{current}分钟，还剩{remaining}分钟'
+      },
+      say_good: {
+        task_intro: '请坐在凳子上，对着手机说好，一共{count}次，说完一次会自动计数',
+        too_fast: '太快了，请慢一点',
+        paused: '请继续',
+        in_progress: '正在说好...',
+        completed: '太好了，说完了',
+        progress: '完成{current}次说好，请继续说好'
+      }
     };
 
     let cachedData = null;
@@ -1535,7 +1603,7 @@
             morning_end: morningEnd,
             afternoon_start: afternoonStart,
             afternoon_end: afternoonEnd,
-            task_order: 'walk,step,stand,turn_head,raise_hand,clap,breath,say_good',
+            task_order: '[{"type":"walk","enabled":true},{"type":"step","enabled":true},{"type":"stand","enabled":true},{"type":"turn_head","enabled":true},{"type":"raise_hand","enabled":true},{"type":"clap","enabled":true},{"type":"breath","enabled":true},{"type":"say_good","enabled":true}]',
             morning_max_points: 1500,
             afternoon_max_points: 1500,
             show_money: true,
@@ -1563,14 +1631,67 @@
     async function showEditUserModal(userId) {
       const user = cachedData.users.find(u => u.id === userId);
       if (!user) return;
-      
+
       const taskTypes = ['walk', 'step', 'stand', 'turn_head', 'raise_hand', 'clap', 'breath', 'say_good'];
       const taskNames = {
         'walk': '散步', 'step': '摆手臂', 'stand': '举手放下',
         'turn_head': '转头', 'raise_hand': '举手', 'clap': '鼓掌',
         'breath': '深呼吸', 'say_good': '说"好"'
       };
-      const currentOrder = (user.task_order || taskTypes.join(',')).split(',');
+
+      // 获取任务模板数据（用于显示默认值）
+      let taskTemplates = {};
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/task_templates?order=task_type`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+        const templates = await res.json();
+        templates.forEach(t => { taskTemplates[t.task_type] = t; });
+      } catch (e) {
+        console.error('获取任务模板失败', e);
+      }
+
+      // 解析 task_order（兼容旧格式和新格式）
+      function parseTaskOrder(order) {
+        if (!order) {
+          return taskTypes.map(type => ({
+            type,
+            enabled: true,
+            duration: null,
+            count: null,
+            points: null
+          }));
+        }
+        const trimmed = order.trim();
+        if (trimmed.startsWith('[')) {
+          try {
+            const items = JSON.parse(trimmed);
+            // 补齐缺失的任务
+            const existingTypes = items.map(i => i.type);
+            const missingTypes = taskTypes.filter(t => !existingTypes.includes(t));
+            const missingItems = missingTypes.map(type => ({ type, enabled: false, duration: null, count: null, points: null }));
+            return items.concat(missingItems);
+          } catch (e) {
+            console.error('解析 task_order JSON 失败', e);
+            return taskTypes.map(type => ({ type, enabled: true, duration: null, count: null, points: null }));
+          }
+        } else {
+          // 旧格式：逗号分隔字符串
+          const enabledTypes = trimmed.split(',').map(t => t.trim());
+          return taskTypes.map(type => ({
+            type,
+            enabled: enabledTypes.includes(type),
+            duration: null,
+            count: null,
+            points: null
+          }));
+        }
+      }
+
+      const taskOrderItems = parseTaskOrder(user.task_order);
       
       const html = `
         <div class="modal show" id="edit-user-modal" onclick="if(event.target===this)this.remove()">
@@ -1620,30 +1741,43 @@
               <!-- 任务顺序抽屉 -->
               <div class="drawer collapsed" id="user-task-drawer">
                 <div class="drawer-header" onclick="toggleDrawer('user-task-drawer')">
-                  <span>🔄 任务顺序</span>
+                  <span>🔄 任务参数</span>
                   <span class="drawer-arrow">▼</span>
                 </div>
                 <div class="drawer-content">
                   <div style="margin-bottom: 8px; color: #666; font-size: 13px;">
-                    勾选启用，<span style="color:#1976d2;">长按</span>拖拽排序
+                    勾选启用，留空使用默认值，<span style="color:#1976d2;">长按</span>拖拽排序
                   </div>
                   <div id="task-order-list">
-                    ${currentOrder.map((t, idx) => `
-                      <div class="task-order-item" data-task="${t}" draggable="true" style="display: flex; align-items: center; padding: 8px 12px; margin-bottom: 4px; background: #f5f5f5; border-radius: 4px; cursor: move; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;">
-                        <input type="checkbox" class="task-enabled" value="${t}" checked onchange="updateTaskOrderFromList()" style="margin-right: 8px;">
+                    ${taskOrderItems.map((item, idx) => {
+                      const template = taskTemplates[item.type] || {};
+                      const defaultDuration = template.duration || 0;
+                      const defaultCount = template.count || 0;
+                      const defaultPoints = template.points || 0;
+                      const isSayGood = item.type === 'say_good';
+                      return `
+                      <div class="task-order-item" data-task="${item.type}" draggable="true" style="display: flex; align-items: center; padding: 8px 12px; margin-bottom: 4px; background: ${item.enabled ? '#f5f5f5' : '#fff'}; border: 1px ${item.enabled ? 'solid #e0e0e0' : 'dashed #ccc'}; border-radius: 4px; cursor: move; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; ${item.enabled ? '' : 'opacity: 0.6;'}">
+                        <input type="checkbox" class="task-enabled" value="${item.type}" ${item.enabled ? 'checked' : ''} onchange="onTaskEnabledChange(this)" style="margin-right: 8px;">
                         <span class="drag-handle" style="color: #999; margin-right: 8px;">☰</span>
-                        <span class="task-name">${taskNames[t] || t}</span>
+                        <span class="task-name" style="min-width: 70px;">${taskNames[item.type] || item.type}</span>
+                        <span style="margin-left: 12px; font-size: 12px; color: #666;">
+                          ${isSayGood ? `
+                            <span>次数:</span>
+                            <input type="number" class="task-count" data-task="${item.type}" value="${item.count || ''}" placeholder="${defaultCount}" style="width: 40px; padding: 2px 4px; font-size: 12px;">
+                            <span style="color:#999;">(默认${defaultCount})</span>
+                          ` : `
+                            <span>时长:</span>
+                            <input type="number" class="task-duration" data-task="${item.type}" value="${item.duration || ''}" placeholder="${defaultDuration}" style="width: 40px; padding: 2px 4px; font-size: 12px;">分
+                            <span style="color:#999;">(默认${defaultDuration})</span>
+                          `}
+                          <span style="margin-left: 8px;">积分:</span>
+                          <input type="number" class="task-points" data-task="${item.type}" value="${item.points || ''}" placeholder="${defaultPoints}" style="width: 50px; padding: 2px 4px; font-size: 12px;">
+                          <span style="color:#999;">(默认${defaultPoints})</span>
+                        </span>
                       </div>
-                    `).join('')}
-                    ${taskTypes.filter(t => !currentOrder.includes(t)).map(t => `
-                      <div class="task-order-item" data-task="${t}" draggable="true" style="display: flex; align-items: center; padding: 8px 12px; margin-bottom: 4px; background: #fff; border: 1px dashed #ccc; border-radius: 4px; cursor: move; opacity: 0.6; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;">
-                        <input type="checkbox" class="task-enabled" value="${t}" onchange="updateTaskOrderFromList()" style="margin-right: 8px;">
-                        <span class="drag-handle" style="color: #999; margin-right: 8px;">☰</span>
-                        <span class="task-name">${taskNames[t] || t}</span>
-                      </div>
-                    `).join('')}
+                    `}).join('')}
                   </div>
-                  <input type="hidden" id="edit-task-order" value="${currentOrder.join(',')}">
+                  <input type="hidden" id="edit-task-order" value="">
                 </div>
               </div>
             </div>
@@ -1679,19 +1813,46 @@
       }
       // 如果当前是展开状态，不允许关闭（确保始终有一个打开）
     }
-    
-    function updateTaskOrderFromList() {
-      const items = document.querySelectorAll('#task-order-list .task-order-item');
-      const order = [];
-      items.forEach(item => {
-        const checkbox = item.querySelector('.task-enabled');
-        if (checkbox && checkbox.checked) {
-          order.push(item.dataset.task);
+
+    // 任务启用状态变化时更新样式
+    function onTaskEnabledChange(checkbox) {
+      const item = checkbox.closest('.task-order-item');
+      if (item) {
+        if (checkbox.checked) {
+          item.style.background = '#f5f5f5';
+          item.style.border = '1px solid #e0e0e0';
+          item.style.opacity = '1';
+        } else {
+          item.style.background = '#fff';
+          item.style.border = '1px dashed #ccc';
+          item.style.opacity = '0.6';
         }
-      });
-      document.getElementById('edit-task-order').value = order.join(',');
+      }
     }
-    
+
+    // 收集任务顺序数据并生成 JSON
+    function collectTaskOrderData() {
+      const items = document.querySelectorAll('#task-order-list .task-order-item');
+      const result = [];
+      items.forEach(item => {
+        const type = item.dataset.task;
+        const enabled = item.querySelector('.task-enabled')?.checked ?? true;
+        const durationInput = item.querySelector('.task-duration');
+        const countInput = item.querySelector('.task-count');
+        const pointsInput = item.querySelector('.task-points');
+
+        const taskItem = {
+          type,
+          enabled,
+          duration: durationInput && durationInput.value ? parseInt(durationInput.value) : null,
+          count: countInput && countInput.value ? parseInt(countInput.value) : null,
+          points: pointsInput && pointsInput.value ? parseInt(pointsInput.value) : null
+        };
+        result.push(taskItem);
+      });
+      return JSON.stringify(result);
+    }
+
     // 初始化拖拽排序（支持鼠标和触摸）
     function initTaskDragSort() {
       const list = document.getElementById('task-order-list');
@@ -1713,7 +1874,6 @@
 
         item.addEventListener('dragend', function(e) {
           this.style.opacity = '';
-          updateTaskOrderFromList();
         });
 
         item.addEventListener('dragover', function(e) {
@@ -1787,7 +1947,6 @@
             this.style.background = '';
             this.style.transform = '';
             this.style.boxShadow = '';
-            updateTaskOrderFromList();
           }
 
           isDragging = false;
@@ -1832,10 +1991,22 @@
       const pointsToYuan = parseInt(document.getElementById('edit-points-to-yuan').value) || 100;
       const showMoney = document.getElementById('edit-show-money').checked;
       const debugMode = document.getElementById('edit-debug-mode').checked;
-      const taskOrder = document.getElementById('edit-task-order').value;
-      // 根据任务顺序中是否包含 say_good 来决定是否启用
-      const sayGoodEnabled = taskOrder.includes('say_good');
-      
+
+      // 收集任务顺序数据（JSON 格式）
+      const taskOrder = collectTaskOrderData();
+
+      // 从 JSON 中解析 say_good 的启用状态
+      let sayGoodEnabled = true;
+      try {
+        const taskItems = JSON.parse(taskOrder);
+        const sayGoodItem = taskItems.find(item => item.type === 'say_good');
+        if (sayGoodItem) {
+          sayGoodEnabled = sayGoodItem.enabled;
+        }
+      } catch (e) {
+        console.error('解析 task_order 失败', e);
+      }
+
       try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`, {
           method: 'PATCH',
@@ -1974,25 +2145,28 @@
     function showEditTemplateModal(taskType) {
       const template = cachedTemplates.find(t => t.task_type === taskType);
       if (!template) return;
-      
+
+      // 获取缺省提示语
+      const defaultPrompts = DEFAULT_PROMPTS[taskType] || {};
+
       const promptConfig = template.prompt_config || {};
       const taskIntro = promptConfig.task_intro || '';
-      const tooFast = promptConfig.too_fast || '太快了，请慢一点';
-      const paused = promptConfig.paused || '请继续';
+      const tooFast = promptConfig.too_fast || '';
+      const paused = promptConfig.paused || '';
       const inProgress = promptConfig.in_progress || '';
-      const completed = promptConfig.completed || '太好了，获得{points}积分';
+      const completed = promptConfig.completed || '';
       const progress = promptConfig.progress || '';
-      
+
       // 根据任务类型决定显示次数还是时长
       const isSayGood = taskType === 'say_good';
       const durationOrCountLabel = isSayGood ? '次数：' : '时长（分钟）：';
       const durationOrCountValue = isSayGood ? (template.count || 0) : (template.duration || 0);
       const durationOrCountId = isSayGood ? 'template-count' : 'template-duration';
       const durationOrCountPlaceholder = isSayGood ? '如 10' : '如 5';
-      
+
       // 重置高级参数显示状态
       advancedParamsVisible = false;
-      
+
       const html = `
         <div class="modal show" id="template-modal" onclick="if(event.target===this)this.remove()">
           <div class="modal-content" style="max-width: 550px; max-height: 85vh; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
@@ -2011,14 +2185,14 @@
                   </div>
                   <div style="margin-bottom: 12px;">
                     <label>${durationOrCountLabel}</label>
-                    <input type="number" id="${durationOrCountId}" value="${durationOrCountValue}" style="width: 80px; padding: 6px;" placeholder="${durationOrCountPlaceholder}" onchange="updateProgressInputState()" oninput="updateProgressInputState()">
+                    <input type="number" id="${durationOrCountId}" value="${durationOrCountValue}" style="width: 80px; padding: 6px;" placeholder="${durationOrCountPlaceholder}">
                     <input type="hidden" id="${isSayGood ? 'template-duration' : 'template-count'}" value="${isSayGood ? (template.duration || 0) : (template.count || 0)}">
                   </div>
                   <div style="margin-bottom: 12px;">
                     <label>固定积分：</label>
                     <input type="number" id="template-points" value="${template.points || 0}" style="width: 80px; padding: 6px;">
                   </div>
-                  
+
                   <!-- 高级参数（默认隐藏） -->
                   <div id="advanced-params-section" style="display: none;">
                     <div class="advanced-params">
@@ -2039,7 +2213,7 @@
                   </div>
                 </div>
               </div>
-              
+
               <!-- 提示语设置抽屉 -->
               <div class="drawer collapsed" id="template-prompt-drawer">
                 <div class="drawer-header" onclick="toggleDrawer('template-prompt-drawer')">
@@ -2049,28 +2223,28 @@
                 <div class="drawer-content">
                   <div style="margin-bottom: 10px;">
                     <label style="font-size: 13px; color: #666;">任务说明 <span style="color: #999;">({duration}=时长, {count}=次数)</span>：</label><br>
-                    <textarea id="prompt-intro" style="width: 100%; height: 50px; padding: 6px; font-size: 13px;">${taskIntro}</textarea>
+                    <textarea id="prompt-intro" style="width: 100%; height: 50px; padding: 6px; font-size: 13px;" placeholder="${defaultPrompts.task_intro || ''}">${taskIntro}</textarea>
                   </div>
                   <div style="margin-bottom: 10px;">
                     <label style="font-size: 13px; color: #666;">太快提示：</label><br>
-                    <input type="text" id="prompt-too-fast" value="${tooFast}" style="width: 100%; padding: 6px; font-size: 13px;">
+                    <input type="text" id="prompt-too-fast" value="${tooFast}" style="width: 100%; padding: 6px; font-size: 13px;" placeholder="${defaultPrompts.too_fast || ''}">
                   </div>
                   <div style="margin-bottom: 10px;">
                     <label style="font-size: 13px; color: #666;">暂停提示：</label><br>
-                    <input type="text" id="prompt-paused" value="${paused}" style="width: 100%; padding: 6px; font-size: 13px;">
+                    <input type="text" id="prompt-paused" value="${paused}" style="width: 100%; padding: 6px; font-size: 13px;" placeholder="${defaultPrompts.paused || ''}">
                   </div>
                   <div style="margin-bottom: 10px;">
                     <label style="font-size: 13px; color: #666;">进行中提示：</label><br>
-                    <input type="text" id="prompt-in-progress" value="${inProgress}" style="width: 100%; padding: 6px; font-size: 13px;">
+                    <input type="text" id="prompt-in-progress" value="${inProgress}" style="width: 100%; padding: 6px; font-size: 13px;" placeholder="${defaultPrompts.in_progress || ''}">
                   </div>
                   <div style="margin-bottom: 10px;">
                     <label style="font-size: 13px; color: #666;">完成提示 <span style="color: #999;">({points}=积分)</span>：</label><br>
-                    <input type="text" id="prompt-completed" value="${completed}" style="width: 100%; padding: 6px; font-size: 13px;">
+                    <input type="text" id="prompt-completed" value="${completed}" style="width: 100%; padding: 6px; font-size: 13px;" placeholder="${defaultPrompts.completed || ''}">
                   </div>
                   ${!isSayGood ? `
                   <div style="margin-bottom: 0;">
-                    <label style="font-size: 13px; color: #666;">进度提示 <span style="color: #999;">({current}=已进行, {remaining}=剩余，时长需≥2分钟生效)</span>：</label><br>
-                    <input type="text" id="prompt-progress" value="${progress}" style="width: 100%; padding: 6px; font-size: 13px;" ${durationOrCountValue < 2 ? 'disabled style="background: #f0f0f0; color: #999;"' : ''}>
+                    <label style="font-size: 13px; color: #666;">进度提示 <span style="color: #999;">({current}=已进行, {remaining}=剩余，用户时长≥2分钟时生效)</span>：</label><br>
+                    <input type="text" id="prompt-progress" value="${progress}" style="width: 100%; padding: 6px; font-size: 13px;" placeholder="${defaultPrompts.progress || ''}">
                   </div>
                   ` : `<input type="hidden" id="prompt-progress" value="${progress}">`}
                 </div>
@@ -2108,24 +2282,6 @@
             templateTitleClickCount = 0;
           }
         });
-      }
-    }
-    
-    // 更新进度提示输入框的禁用状态（根据时长联动）
-    function updateProgressInputState() {
-      const progressInput = document.getElementById('prompt-progress');
-      const durationInput = document.getElementById('template-duration');
-      if (progressInput && durationInput) {
-        const duration = parseInt(durationInput.value) || 0;
-        if (duration < 2) {
-          progressInput.disabled = true;
-          progressInput.style.background = '#f0f0f0';
-          progressInput.style.color = '#999';
-        } else {
-          progressInput.disabled = false;
-          progressInput.style.background = '';
-          progressInput.style.color = '';
-        }
       }
     }
     
