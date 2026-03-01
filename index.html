@@ -1753,11 +1753,11 @@
                   </div>
                   <div style="margin-bottom: 8px;">
                     <label style="font-size: 12px;">上午上限：</label>
-                    <input type="number" id="edit-morning-max" value="${user.morning_max_points || 1500}" min="0" style="width: 70px; padding: 4px; font-size: 12px;"> 分
+                    <input type="number" id="edit-morning-max" value="${user.morning_max_points || 1500}" min="0" step="1" style="width: 70px; padding: 4px; font-size: 12px;"> 分
                   </div>
                   <div style="margin-bottom: 8px;">
                     <label style="font-size: 12px;">下午上限：</label>
-                    <input type="number" id="edit-afternoon-max" value="${user.afternoon_max_points || 1500}" min="0" style="width: 70px; padding: 4px; font-size: 12px;"> 分
+                    <input type="number" id="edit-afternoon-max" value="${user.afternoon_max_points || 1500}" min="0" step="1" style="width: 70px; padding: 4px; font-size: 12px;"> 分
                   </div>
                   <div style="margin-bottom: 8px;">
                     <label style="font-size: 12px;">兑换比：</label>
@@ -2016,11 +2016,33 @@
       const showMoney = document.getElementById('edit-show-money').checked;
       const debugMode = document.getElementById('edit-debug-mode').checked;
 
-      // 验证时段配置：上午结束不超过12:00，下午开始不早于12:00
+      // 验证时段配置
+      const morningStartMinutes = parseInt(morningStart.split(':')[0]) * 60 + parseInt(morningStart.split(':')[1] || 0);
       const morningEndMinutes = parseInt(morningEnd.split(':')[0]) * 60 + parseInt(morningEnd.split(':')[1] || 0);
       const afternoonStartMinutes = parseInt(afternoonStart.split(':')[0]) * 60 + parseInt(afternoonStart.split(':')[1] || 0);
+      const afternoonEndMinutes = parseInt(afternoonEnd.split(':')[0]) * 60 + parseInt(afternoonEnd.split(':')[1] || 0);
+
+      // 验证上午时段
+      if (morningStartMinutes >= morningEndMinutes) {
+        alert('上午开始时间必须小于结束时间');
+        return;
+      }
+      if (morningEndMinutes - morningStartMinutes < 5) {
+        alert('上午时段至少需要5分钟');
+        return;
+      }
       if (morningEndMinutes > 12 * 60) {
         alert('上午结束时间不能超过12:00');
+        return;
+      }
+
+      // 验证下午时段
+      if (afternoonStartMinutes >= afternoonEndMinutes) {
+        alert('下午开始时间必须小于结束时间');
+        return;
+      }
+      if (afternoonEndMinutes - afternoonStartMinutes < 5) {
+        alert('下午时段至少需要5分钟');
         return;
       }
       if (afternoonStartMinutes < 12 * 60) {
@@ -2235,15 +2257,15 @@
                       <div class="advanced-params-header">⚙️ 高级参数（连续点击标题5下显示）</div>
                       <div style="margin-bottom: 12px;">
                         <label>最大速度阈值：</label>
-                        <input type="number" id="template-max-speed" value="${template.max_speed || 0}" style="width: 80px; padding: 6px;">
+                        <input type="number" id="template-max-speed" value="${template.max_speed || 0}" min="0" step="1" style="width: 80px; padding: 6px;">
                       </div>
                       <div style="margin-bottom: 12px;">
                         <label>最小间隔（毫秒）：</label>
-                        <input type="number" id="template-min-interval" value="${template.min_interval || 0}" style="width: 100px; padding: 6px;">
+                        <input type="number" id="template-min-interval" value="${template.min_interval || 0}" min="0" step="1" style="width: 100px; padding: 6px;">
                       </div>
                       <div style="margin-bottom: 0;">
                         <label>暂停阈值（毫秒）：</label>
-                        <input type="number" id="template-pause-threshold" value="${template.pause_threshold || 0}" style="width: 100px; padding: 6px;">
+                        <input type="number" id="template-pause-threshold" value="${template.pause_threshold || 0}" min="0" step="1" style="width: 100px; padding: 6px;">
                       </div>
                     </div>
                   </div>
