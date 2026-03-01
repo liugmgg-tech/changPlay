@@ -1710,38 +1710,39 @@
               <div class="drawer" id="user-basic-drawer">
                 <div class="drawer-header" onclick="toggleDrawer('user-basic-drawer')">
                   <span>📋 基本设置</span>
+                  <span style="font-size: 11px; color: #999; margin-left: 8px;">名称｜时段｜积分上限｜兑换比例</span>
                   <span class="drawer-arrow">▼</span>
                 </div>
                 <div class="drawer-content">
-                  <div style="margin-bottom: 12px;">
-                    <label>显示名称：</label>
-                    <input type="text" id="edit-display-name" value="${user.display_name || ''}" style="width: 150px; padding: 8px;">
+                  <div style="margin-bottom: 8px;">
+                    <label style="font-size: 12px;">名称：</label>
+                    <input type="text" id="edit-display-name" value="${user.display_name || ''}" style="width: 120px; padding: 4px 6px; font-size: 12px;">
                   </div>
-                  <div style="margin-bottom: 12px;">
-                    <label>上午时段：</label>
-                    <input type="time" id="edit-morning-start" value="${user.morning_start || '08:00'}" style="padding: 6px;"> - 
-                    <input type="time" id="edit-morning-end" value="${user.morning_end || '11:30'}" style="padding: 6px;">
+                  <div style="margin-bottom: 8px;">
+                    <label style="font-size: 12px;">上午：</label>
+                    <input type="time" id="edit-morning-start" value="${user.morning_start || '08:00'}" style="padding: 4px; font-size: 12px;"> - 
+                    <input type="time" id="edit-morning-end" value="${user.morning_end || '11:30'}" style="padding: 4px; font-size: 12px;">
                   </div>
-                  <div style="margin-bottom: 12px;">
-                    <label>下午时段：</label>
-                    <input type="time" id="edit-afternoon-start" value="${user.afternoon_start || '14:00'}" style="padding: 6px;"> - 
-                    <input type="time" id="edit-afternoon-end" value="${user.afternoon_end || '18:00'}" style="padding: 6px;">
+                  <div style="margin-bottom: 8px;">
+                    <label style="font-size: 12px;">下午：</label>
+                    <input type="time" id="edit-afternoon-start" value="${user.afternoon_start || '14:00'}" style="padding: 4px; font-size: 12px;"> - 
+                    <input type="time" id="edit-afternoon-end" value="${user.afternoon_end || '18:00'}" style="padding: 4px; font-size: 12px;">
                   </div>
-                  <div style="margin-bottom: 12px;">
-                    <label>上午最大积分：</label>
-                    <input type="number" id="edit-morning-max" value="${user.morning_max_points || 1500}" style="width: 80px; padding: 6px;">
+                  <div style="margin-bottom: 8px;">
+                    <label style="font-size: 12px;">上午上限：</label>
+                    <input type="number" id="edit-morning-max" value="${user.morning_max_points || 1500}" min="0" style="width: 70px; padding: 4px; font-size: 12px;"> 分
                   </div>
-                  <div style="margin-bottom: 12px;">
-                    <label>下午最大积分：</label>
-                    <input type="number" id="edit-afternoon-max" value="${user.afternoon_max_points || 1500}" style="width: 80px; padding: 6px;">
+                  <div style="margin-bottom: 8px;">
+                    <label style="font-size: 12px;">下午上限：</label>
+                    <input type="number" id="edit-afternoon-max" value="${user.afternoon_max_points || 1500}" min="0" style="width: 70px; padding: 4px; font-size: 12px;"> 分
                   </div>
-                  <div style="margin-bottom: 12px;">
-                    <label>积分兑换比例：</label>
-                    <input type="number" id="edit-points-to-yuan" value="${user.points_to_yuan || 100}" style="width: 80px; padding: 6px;"> 积分 = 1元
+                  <div style="margin-bottom: 8px;">
+                    <label style="font-size: 12px;">兑换比：</label>
+                    <input type="number" id="edit-points-to-yuan" value="${user.points_to_yuan || 100}" min="1" style="width: 60px; padding: 4px; font-size: 12px;"> 分=1元
                   </div>
-                  <div style="margin-bottom: 12px;">
+                  <div style="margin-bottom: 4px; font-size: 12px;">
                     <label><input type="checkbox" id="edit-show-money" ${user.show_money !== false ? 'checked' : ''}> 显示金额</label>
-                    <label style="margin-left: 16px;"><input type="checkbox" id="edit-debug-mode" ${user.debug_mode ? 'checked' : ''}> 调试模式</label>
+                    <label style="margin-left: 12px;"><input type="checkbox" id="edit-debug-mode" ${user.debug_mode ? 'checked' : ''}> 调试模式</label>
                   </div>
                 </div>
               </div>
@@ -1762,18 +1763,16 @@
                       const defaultPoints = template.points || 0;
                       const isSayGood = item.type === 'say_good';
                       return `
-                      <div class="task-order-item" data-task="${item.type}" draggable="true" style="display: flex; align-items: center; padding: 6px 10px; margin-bottom: 2px; background: ${item.enabled ? '#f5f5f5' : '#fff'}; border: 1px ${item.enabled ? 'solid #e0e0e0' : 'dashed #ccc'}; border-radius: 4px; cursor: move; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; ${item.enabled ? '' : 'opacity: 0.6;'}">
-                        <input type="checkbox" class="task-enabled" value="${item.type}" ${item.enabled ? 'checked' : ''} onchange="onTaskEnabledChange(this)" style="margin-right: 6px;">
-                        <span class="drag-handle" style="color: #999; margin-right: 6px;">☰</span>
-                        <span class="task-name" style="min-width: 65px; font-size: 13px;">${taskNames[item.type] || item.type}</span>
-                        <span style="font-size: 12px; color: #666;">
-                          ${isSayGood ? `
-                            次数:<input type="number" class="task-count" data-task="${item.type}" value="${item.count || ''}" placeholder="${defaultCount}" min="0" style="width: 45px; padding: 1px 3px; font-size: 12px; margin: 0 2px;">
-                          ` : `
-                            时长:<input type="number" class="task-duration" data-task="${item.type}" value="${item.duration || ''}" placeholder="${defaultDuration}" min="0" style="width: 45px; padding: 1px 3px; font-size: 12px; margin: 0 2px;">分
-                          `}
-                          积分:<input type="number" class="task-points" data-task="${item.type}" value="${item.points || ''}" placeholder="${defaultPoints}" min="0" style="width: 50px; padding: 1px 3px; font-size: 12px; margin-left: 2px;">
-                        </span>
+                      <div class="task-order-item" data-task="${item.type}" draggable="true" style="display: flex; align-items: center; flex-wrap: nowrap; padding: 5px 8px; margin-bottom: 2px; background: ${item.enabled ? '#f5f5f5' : '#fff'}; border: 1px ${item.enabled ? 'solid #e0e0e0' : 'dashed #ccc'}; border-radius: 4px; cursor: move; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; ${item.enabled ? '' : 'opacity: 0.6;'}">
+                        <input type="checkbox" class="task-enabled" value="${item.type}" ${item.enabled ? 'checked' : ''} onchange="onTaskEnabledChange(this)" style="margin-right: 4px;">
+                        <span class="drag-handle" style="color: #999; margin-right: 4px;">☰</span>
+                        <span class="task-name" style="font-size: 12px; white-space: nowrap;">${taskNames[item.type] || item.type}</span>
+                        ${isSayGood ? `
+                          <input type="number" class="task-count" data-task="${item.type}" value="${item.count || ''}" placeholder="${defaultCount}次" min="0" style="width: 42px; padding: 1px 2px; font-size: 11px; margin-left: 4px;">
+                        ` : `
+                          <input type="number" class="task-duration" data-task="${item.type}" value="${item.duration || ''}" placeholder="${defaultDuration}分" min="0" style="width: 42px; padding: 1px 2px; font-size: 11px; margin-left: 4px;">
+                        `}
+                        <input type="number" class="task-points" data-task="${item.type}" value="${item.points || ''}" placeholder="${defaultPoints}分" min="0" style="width: 42px; padding: 1px 2px; font-size: 11px; margin-left: 4px;">
                       </div>
                     `}).join('')}
                   </div>
