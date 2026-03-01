@@ -1725,12 +1725,19 @@
       const morningEnd = document.getElementById('new-morning-end').value;
       const afternoonStart = document.getElementById('new-afternoon-start').value;
       const afternoonEnd = document.getElementById('new-afternoon-end').value;
-      
+
       if (!id) {
         alert('请输入设备编号');
         return;
       }
-      
+
+      // 检查用户编号是否已存在
+      const existingUser = cachedData.users.find(u => u.id === id);
+      if (existingUser) {
+        alert(`设备编号 "${id}" 已存在，请使用其他编号`);
+        return;
+      }
+
       try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
           method: 'POST',
@@ -1756,7 +1763,7 @@
             debug_mode: false
           })
         });
-        
+
         if (res.ok) {
           alert('创建成功！');
           document.getElementById('add-user-modal').remove();
@@ -1764,7 +1771,12 @@
           renderUsersPanel(document.getElementById('settings-panel'));
         } else {
           const err = await res.text();
-          alert('创建失败：' + err);
+          // 检查是否是主键冲突错误
+          if (err.includes('duplicate key') || err.includes('already exists')) {
+            alert(`设备编号 "${id}" 已存在，请使用其他编号`);
+          } else {
+            alert('创建失败：' + err);
+          }
         }
       } catch (e) {
         alert('操作失败：' + e.message);
