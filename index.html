@@ -1750,12 +1750,10 @@
               <div class="drawer collapsed" id="user-task-drawer">
                 <div class="drawer-header" onclick="toggleDrawer('user-task-drawer')">
                   <span>🔄 任务参数</span>
+                  <span style="font-size: 11px; color: #999; margin-left: 8px;">勾选启用｜留空默认｜长按拖拽</span>
                   <span class="drawer-arrow">▼</span>
                 </div>
                 <div class="drawer-content">
-                  <div style="margin-bottom: 8px; color: #666; font-size: 13px;">
-                    勾选启用，留空使用默认值，<span style="color:#1976d2;">长按</span>拖拽排序
-                  </div>
                   <div id="task-order-list">
                     ${taskOrderItems.map((item, idx) => {
                       const template = taskTemplates[item.type] || {};
