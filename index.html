@@ -584,7 +584,7 @@
     const activityNames = {
       'walk': '散步 📱',
       'step': '摆手臂 📱',
-      'stand': '举放手机 📱',
+      'stand': '举手机 📱',
       'turn_head': '转头 📷',
       'raise_hand': '举手 📷',
       'clap': '鼓掌 📷',
@@ -1419,7 +1419,7 @@
       }
       
       const taskNames = {
-        'walk': '散步', 'step': '摆手臂', 'stand': '举手放下',
+        'walk': '散步', 'step': '摆手臂', 'stand': '举手机',
         'turn_head': '转头', 'raise_hand': '举手', 'clap': '鼓掌',
         'breath': '深呼吸', 'say_good': '说"好"'
       };
@@ -1665,7 +1665,7 @@
 
       const taskTypes = ['walk', 'step', 'stand', 'turn_head', 'raise_hand', 'clap', 'breath', 'say_good'];
       const taskNames = {
-        'walk': '散步', 'step': '摆手臂', 'stand': '举手放下',
+        'walk': '散步', 'step': '摆手臂', 'stand': '举手机',
         'turn_head': '转头', 'raise_hand': '举手', 'clap': '鼓掌',
         'breath': '深呼吸', 'say_good': '说"好"'
       };
@@ -1868,9 +1868,9 @@
         const taskItem = {
           type,
           enabled,
-          duration: durationInput && durationInput.value ? parseInt(durationInput.value) : null,
-          count: countInput && countInput.value ? parseInt(countInput.value) : null,
-          points: pointsInput && pointsInput.value ? parseInt(pointsInput.value) : null
+          duration: durationInput && durationInput.value ? Math.max(1, parseInt(durationInput.value)) : null,
+          count: countInput && countInput.value ? Math.max(1, parseInt(countInput.value)) : null,
+          points: pointsInput && pointsInput.value ? Math.max(0, parseInt(pointsInput.value)) : null
         };
         result.push(taskItem);
       });
@@ -2010,9 +2010,9 @@
       const morningEnd = document.getElementById('edit-morning-end').value;
       const afternoonStart = document.getElementById('edit-afternoon-start').value;
       const afternoonEnd = document.getElementById('edit-afternoon-end').value;
-      const morningMax = parseInt(document.getElementById('edit-morning-max').value) || 1500;
-      const afternoonMax = parseInt(document.getElementById('edit-afternoon-max').value) || 1500;
-      const pointsToYuan = parseInt(document.getElementById('edit-points-to-yuan').value) || 100;
+      const morningMax = Math.max(0, parseInt(document.getElementById('edit-morning-max').value) || 1500);
+      const afternoonMax = Math.max(0, parseInt(document.getElementById('edit-afternoon-max').value) || 1500);
+      const pointsToYuan = Math.max(1, parseInt(document.getElementById('edit-points-to-yuan').value) || 100);
       const showMoney = document.getElementById('edit-show-money').checked;
       const debugMode = document.getElementById('edit-debug-mode').checked;
 
