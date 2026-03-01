@@ -1763,16 +1763,18 @@
                       const defaultPoints = template.points || 0;
                       const isSayGood = item.type === 'say_good';
                       return `
-                      <div class="task-order-item" data-task="${item.type}" draggable="true" style="display: flex; align-items: center; flex-wrap: nowrap; padding: 5px 8px; margin-bottom: 2px; background: ${item.enabled ? '#f5f5f5' : '#fff'}; border: 1px ${item.enabled ? 'solid #e0e0e0' : 'dashed #ccc'}; border-radius: 4px; cursor: move; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; ${item.enabled ? '' : 'opacity: 0.6;'}">
-                        <input type="checkbox" class="task-enabled" value="${item.type}" ${item.enabled ? 'checked' : ''} onchange="onTaskEnabledChange(this)" style="margin-right: 4px;">
-                        <span class="drag-handle" style="color: #999; margin-right: 4px;">☰</span>
-                        <span class="task-name" style="font-size: 12px; white-space: nowrap;">${taskNames[item.type] || item.type}</span>
-                        ${isSayGood ? `
-                          <input type="number" class="task-count" data-task="${item.type}" value="${item.count || ''}" placeholder="${defaultCount}次" min="0" style="width: 42px; padding: 1px 2px; font-size: 11px; margin-left: 4px;">
-                        ` : `
-                          <input type="number" class="task-duration" data-task="${item.type}" value="${item.duration || ''}" placeholder="${defaultDuration}分" min="0" style="width: 42px; padding: 1px 2px; font-size: 11px; margin-left: 4px;">
-                        `}
-                        <input type="number" class="task-points" data-task="${item.type}" value="${item.points || ''}" placeholder="${defaultPoints}分" min="0" style="width: 42px; padding: 1px 2px; font-size: 11px; margin-left: 4px;">
+                      <div class="task-order-item" data-task="${item.type}" draggable="true" style="display: flex; align-items: center; flex-wrap: nowrap; padding: 6px 10px; margin-bottom: 3px; background: ${item.enabled ? '#f5f5f5' : '#fff'}; border: 1px ${item.enabled ? 'solid #e0e0e0' : 'dashed #ccc'}; border-radius: 4px; cursor: move; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; ${item.enabled ? '' : 'opacity: 0.6;'}">
+                        <input type="checkbox" class="task-enabled" value="${item.type}" ${item.enabled ? 'checked' : ''} onchange="onTaskEnabledChange(this)" style="margin-right: 6px;">
+                        <span class="drag-handle" style="color: #999; margin-right: 6px;">☰</span>
+                        <span class="task-name" style="min-width: 70px; font-size: 13px;">${taskNames[item.type] || item.type}</span>
+                        <span style="font-size: 12px; color: #666; white-space: nowrap;">
+                          ${isSayGood ? `
+                            次数:<input type="number" class="task-count" data-task="${item.type}" value="${item.count || ''}" placeholder="${defaultCount}" min="0" style="width: 40px; padding: 2px 4px; font-size: 12px; margin: 0 3px;">
+                          ` : `
+                            时长:<input type="number" class="task-duration" data-task="${item.type}" value="${item.duration || ''}" placeholder="${defaultDuration}" min="0" style="width: 40px; padding: 2px 4px; font-size: 12px; margin: 0 3px;">分
+                          `}
+                          积分:<input type="number" class="task-points" data-task="${item.type}" value="${item.points || ''}" placeholder="${defaultPoints}" min="0" style="width: 45px; padding: 2px 4px; font-size: 12px; margin-left: 3px;">
+                        </span>
                       </div>
                     `}).join('')}
                   </div>
