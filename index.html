@@ -497,6 +497,29 @@
         display: none;
       }
     }
+
+    /* 任务参数输入框响应式宽度 */
+    .task-duration, .task-count {
+      width: 32px;
+      padding: 2px 3px;
+      font-size: 12px;
+    }
+    .task-points {
+      width: 32px;
+      padding: 2px 3px;
+      font-size: 12px;
+    }
+
+    @media (min-width: 768px) {
+      .task-duration, .task-count {
+        width: 60px;
+        padding: 2px 6px;
+      }
+      .task-points {
+        width: 65px;
+        padding: 2px 6px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1703,7 +1726,7 @@
       
       const html = `
         <div class="modal show" id="edit-user-modal" onclick="if(event.target===this)this.remove()">
-          <div class="modal-content" style="max-width: 600px; max-height: 80vh; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
+          <div class="modal-content" style="max-width: 600px; max-height: 90vh; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
             <div class="modal-title" style="flex-shrink: 0;">编辑用户 - ${userId}</div>
             <div class="modal-body-scroll">
               <!-- 基本设置抽屉 -->
@@ -1769,11 +1792,11 @@
                         <span class="task-name" style="min-width: 70px; font-size: 13px;">${taskNames[item.type] || item.type}</span>
                         <span style="font-size: 12px; color: #666; white-space: nowrap;">
                           ${isSayGood ? `
-                            次数:<input type="number" class="task-count" data-task="${item.type}" value="${item.count || ''}" placeholder="${defaultCount}" min="0" style="width: 40px; padding: 2px 4px; font-size: 12px; margin: 0 3px;">
+                            次数:<input type="number" class="task-count" data-task="${item.type}" value="${item.count || ''}" placeholder="${defaultCount}" min="0" style="margin: 0 3px;">
                           ` : `
-                            时长:<input type="number" class="task-duration" data-task="${item.type}" value="${item.duration || ''}" placeholder="${defaultDuration}" min="0" style="width: 40px; padding: 2px 4px; font-size: 12px; margin: 0 3px;">分
+                            时长:<input type="number" class="task-duration" data-task="${item.type}" value="${item.duration || ''}" placeholder="${defaultDuration}" min="0" style="margin: 0 3px;">分
                           `}
-                          积分:<input type="number" class="task-points" data-task="${item.type}" value="${item.points || ''}" placeholder="${defaultPoints}" min="0" style="width: 45px; padding: 2px 4px; font-size: 12px; margin-left: 3px;">
+                          <span style="margin: 0 8px;">积分:</span><input type="number" class="task-points" data-task="${item.type}" value="${item.points || ''}" placeholder="${defaultPoints}" min="0">
                         </span>
                       </div>
                     `}).join('')}
