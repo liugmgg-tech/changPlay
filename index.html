@@ -1689,6 +1689,11 @@
       const user = cachedData.users.find(u => u.id === userId);
       if (!user) return;
 
+      // 保存原始 task_order，用于检测是否修改
+      const originalTaskOrder = user.task_order;
+      window._originalTaskOrder = originalTaskOrder;
+      window._taskDrawerOpened = false;
+
       const taskTypes = ['walk', 'step', 'stand', 'turn_head', 'raise_hand', 'clap', 'breath', 'say_good'];
       const taskNames = {
         'walk': '散步', 'step': '摆手臂', 'stand': '举手机',
@@ -1749,7 +1754,7 @@
       }
 
       const taskOrderItems = parseTaskOrder(user.task_order);
-      
+
       const html = `
         <div class="modal show" id="edit-user-modal" onclick="if(event.target===this)this.remove()">
           <div class="modal-content" style="max-width: 600px; max-height: 90vh; display: flex; flex-direction: column;" onclick="event.stopPropagation()">
@@ -1846,9 +1851,9 @@
     function toggleDrawer(drawerId) {
       const drawer = document.getElementById(drawerId);
       if (!drawer) return;
-      
+
       const isCurrentlyCollapsed = drawer.classList.contains('collapsed');
-      
+
       // 如果当前是收起状态，要展开它
       if (isCurrentlyCollapsed) {
         // 先关闭同级其他抽屉
@@ -1860,6 +1865,11 @@
         });
         // 然后展开当前抽屉
         drawer.classList.remove('collapsed');
+
+        // 标记任务抽屉已被打开
+        if (drawerId === 'user-task-drawer') {
+          window._taskDrawerOpened = true;
+        }
       }
       // 如果当前是展开状态，不允许关闭（确保始终有一个打开）
     }
@@ -2077,7 +2087,13 @@
       }
 
       // 收集任务顺序数据（JSON 格式）
-      const taskOrder = collectTaskOrderData();
+      // 如果任务抽屉从未打开，保留原始值，避免意外修改
+      let taskOrder;
+      if (window._taskDrawerOpened) {
+        taskOrder = collectTaskOrderData();
+      } else {
+        taskOrder = window._originalTaskOrder || collectTaskOrderData();
+      }
 
       // 从 JSON 中解析 say_good 的启用状态
       let sayGoodEnabled = true;
@@ -2118,10 +2134,15 @@
         });
         
         if (res.ok) {
-          alert('保存成功！App端下次启动时将自动同步。');
           document.getElementById('edit-user-modal').remove();
-          await loadData();
-          renderUsersPanel(document.getElementById('settings-panel'));
+          try {
+            await loadData();
+            renderUsersPanel(document.getElementById('settings-panel'));
+            alert('保存成功！App端下次启动时将自动同步。');
+          } catch (e) {
+            console.error('刷新数据失败:', e);
+            alert('保存成功，但刷新数据失败，请手动刷新页面。');
+          }
         } else {
           alert('保存失败');
         }
