@@ -1773,6 +1773,26 @@
     
     // 编辑用户弹窗
     async function showEditUserModal(userId) {
+      // 先从数据库获取最新用户数据，避免缓存数据损坏
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+        const freshUsers = await res.json();
+        if (freshUsers && freshUsers.length > 0) {
+          // 更新缓存中的用户数据
+          const idx = cachedData.users.findIndex(u => u.id === userId);
+          if (idx >= 0) {
+            cachedData.users[idx] = freshUsers[0];
+          }
+        }
+      } catch (e) {
+        console.error('获取最新用户数据失败', e);
+      }
+
       const user = cachedData.users.find(u => u.id === userId);
       if (!user) return;
 
@@ -2182,17 +2202,24 @@
         taskOrder = window._originalTaskOrder || collectTaskOrderData();
       }
 
-      // 从 JSON 中解析 say_good 的启用状态
-      let sayGoodEnabled = true;
+      // 验证JSON有效性，防止保存损坏数据
+      let taskItems;
       try {
-        const taskItems = JSON.parse(taskOrder);
-        const sayGoodItem = taskItems.find(item => item.type === 'say_good');
-        if (sayGoodItem) {
-          sayGoodEnabled = sayGoodItem.enabled;
+        taskItems = JSON.parse(taskOrder);
+        if (!Array.isArray(taskItems) || taskItems.length === 0) {
+          throw new Error('task_order 格式无效');
         }
       } catch (e) {
-        console.error('解析 task_order 失败', e);
+        console.error('task_order JSON无效，使用默认值', e);
+        // 使用默认任务顺序
+        const defaultTaskTypes = ['walk', 'step', 'stand', 'turn_head', 'raise_hand', 'clap', 'breath', 'say_good'];
+        taskItems = defaultTaskTypes.map(type => ({ type, enabled: true, duration: null, count: null, points: null }));
+        taskOrder = JSON.stringify(taskItems);
       }
+
+      // 从 JSON 中解析 say_good 的启用状态
+      const sayGoodItem = taskItems.find(item => item.type === 'say_good');
+      const sayGoodEnabled = sayGoodItem ? sayGoodItem.enabled : true;
 
       try {
         const res = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}`, {
@@ -2334,7 +2361,27 @@
     let templateTitleClickTimer = null;
     let advancedParamsVisible = false;
     
-    function showEditTemplateModal(taskType) {
+    async function showEditTemplateModal(taskType) {
+      // 先从数据库获取最新模板数据，避免缓存数据损坏
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/task_templates?task_type=eq.${taskType}`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+        const freshTemplates = await res.json();
+        if (freshTemplates && freshTemplates.length > 0) {
+          // 更新缓存中的模板数据
+          const idx = cachedTemplates.findIndex(t => t.task_type === taskType);
+          if (idx >= 0) {
+            cachedTemplates[idx] = freshTemplates[0];
+          }
+        }
+      } catch (e) {
+        console.error('获取最新模板数据失败', e);
+      }
+
       const template = cachedTemplates.find(t => t.task_type === taskType);
       if (!template) return;
 
@@ -2540,7 +2587,27 @@
     }
     
     // 编辑提示语弹窗
-    function showEditPromptModal(key) {
+    async function showEditPromptModal(key) {
+      // 先从数据库获取最新提示语数据，避免缓存数据损坏
+      try {
+        const res = await fetch(`${SUPABASE_URL}/rest/v1/global_prompts?key=eq.${key}`, {
+          headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+          }
+        });
+        const freshPrompts = await res.json();
+        if (freshPrompts && freshPrompts.length > 0) {
+          // 更新缓存中的提示语数据
+          const idx = cachedGlobalPrompts.findIndex(p => p.key === key);
+          if (idx >= 0) {
+            cachedGlobalPrompts[idx] = freshPrompts[0];
+          }
+        }
+      } catch (e) {
+        console.error('获取最新提示语数据失败', e);
+      }
+
       const prompt = cachedGlobalPrompts.find(p => p.key === key);
       if (!prompt) return;
       
