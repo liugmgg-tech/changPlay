@@ -520,9 +520,89 @@
         padding: 2px 6px;
       }
     }
+
+    /* 登录页面样式 */
+    #login-screen {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .login-box {
+      background: white;
+      padding: 40px;
+      border-radius: 16px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+      text-align: center;
+      max-width: 350px;
+      width: 90%;
+    }
+    .login-box h2 {
+      margin-bottom: 8px;
+      color: #333;
+    }
+    .login-box p {
+      color: #666;
+      margin-bottom: 24px;
+      font-size: 14px;
+    }
+    .login-box input {
+      width: 100%;
+      padding: 14px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 18px;
+      text-align: center;
+      letter-spacing: 8px;
+      margin-bottom: 16px;
+    }
+    .login-box input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    .login-box button {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .login-box button:hover {
+      transform: scale(1.02);
+    }
+    .login-error {
+      color: #f44336;
+      font-size: 14px;
+      margin-top: 12px;
+      display: none;
+    }
+    #main-app {
+      display: none;
+    }
+    #main-app.show {
+      display: block;
+    }
   </style>
 </head>
 <body>
+  <!-- 登录页面 -->
+  <div id="login-screen" style="display: none;">
+    <div class="login-box">
+      <h2>🔐 身份验证</h2>
+      <p>请输入访问密码</p>
+      <input type="password" id="login-password" placeholder="******" maxlength="6" onkeypress="if(event.key==='Enter')doLogin()">
+      <button onclick="doLogin()">进入系统</button>
+      <div class="login-error" id="login-error">密码错误，请重试</div>
+    </div>
+  </div>
+
+  <!-- 主应用 -->
+  <div id="main-app">
   <h1 id="main-title" style="user-select: none;">运动查看 <span id="config-name" style="font-size: 14px; color: #999; margin-left: 8px;"></span></h1>
   
   <div class="tabs">
@@ -560,6 +640,13 @@
       </div>
     </div>
   </div>
+
+  <!-- 退出登录按钮 -->
+  <div id="logout-btn" style="position: fixed; top: 10px; right: 10px; display: none;">
+    <button onclick="doLogout()" style="padding: 6px 12px; font-size: 12px; background: #f44336; color: white; border: none; border-radius: 4px; cursor: pointer;">退出</button>
+  </div>
+
+  </div><!-- end of main-app -->
 
   <script>
     const CLOUD_CONFIG_ID = 2;  // 1=宁, 2=长
@@ -2524,8 +2611,79 @@
       renderRealtime();
     }
 
-    init();
-    setInterval(refreshData, 30000);
+    // ========== 登录验证 ==========
+    // 存储密码的 SHA-256 哈希值（非明文）
+    const LOGIN_HASH = '755825e4e0cef59183a2b9694575069c436c217fc1423591317d2663cfb7210d';
+    const LOGIN_KEY = 'parentapp_logged_in';
+    let refreshInterval = null;
+
+    // SHA-256 哈希计算
+    async function sha256(message) {
+      const msgBuffer = new TextEncoder().encode(message);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    }
+
+    function checkLogin() {
+      const loggedIn = sessionStorage.getItem(LOGIN_KEY);
+      if (loggedIn === 'true') {
+        showMainApp();
+        startApp();
+        return true;
+      }
+      showLoginScreen();
+      return false;
+    }
+
+    function showLoginScreen() {
+      document.getElementById('login-screen').style.display = 'flex';
+      document.getElementById('main-app').classList.remove('show');
+      document.getElementById('logout-btn').style.display = 'none';
+    }
+
+    function showMainApp() {
+      document.getElementById('login-screen').style.display = 'none';
+      document.getElementById('main-app').classList.add('show');
+      document.getElementById('logout-btn').style.display = 'block';
+    }
+
+    function startApp() {
+      init();
+      if (refreshInterval) clearInterval(refreshInterval);
+      refreshInterval = setInterval(refreshData, 30000);
+    }
+
+    async function doLogin() {
+      const input = document.getElementById('login-password').value;
+      const error = document.getElementById('login-error');
+
+      // 计算输入的哈希值并与存储的哈希值比较
+      const inputHash = await sha256(input);
+
+      if (inputHash === LOGIN_HASH) {
+        sessionStorage.setItem(LOGIN_KEY, 'true');
+        error.style.display = 'none';
+        document.getElementById('login-password').value = '';
+        showMainApp();
+        startApp();
+      } else {
+        error.style.display = 'block';
+        document.getElementById('login-password').value = '';
+        document.getElementById('login-password').focus();
+      }
+    }
+
+    function doLogout() {
+      if (confirm('确定要退出登录吗？')) {
+        sessionStorage.removeItem(LOGIN_KEY);
+        if (refreshInterval) clearInterval(refreshInterval);
+        showLoginScreen();
+      }
+    }
+
+    // 页面加载时检查登录状态
+    checkLogin();
   </script>
 </body>
 </html>
