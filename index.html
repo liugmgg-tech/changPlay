@@ -699,6 +699,14 @@
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
     }
 
+    // HTML转义函数（防止XSS）
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
     function pointsToMoney(points, pointsToYuan = 100) {
       return (points / pointsToYuan).toFixed(2);
     }
@@ -1241,8 +1249,8 @@
               ${userPersons.length === 0 ? '<span style="color: #999;">暂无人员</span>' : 
                 userPersons.map(p => `
                   <div style="background: #e3f2fd; padding: 6px 12px; border-radius: 16px; display: flex; align-items: center; gap: 8px;">
-                    <span>${p.person_name}</span>
-                    <button onclick="editPerson('${user.id}', ${p.person_index}, '${p.person_name}')" style="background: none; border: none; cursor: pointer; color: #1976D2;">✏️</button>
+                    <span>${escapeHtml(p.person_name)}</span>
+                    <button onclick="editPerson('${user.id}', ${p.person_index}, '${escapeHtml(p.person_name)}')" style="background: none; border: none; cursor: pointer; color: #1976D2;">✏️</button>
                     <button onclick="deletePerson('${user.id}', ${p.person_index})" style="background: none; border: none; cursor: pointer; color: #f44336;">🗑️</button>
                   </div>
                 `).join('')}
@@ -1756,24 +1764,23 @@
                       const defaultPoints = template.points || 0;
                       const isSayGood = item.type === 'say_good';
                       return `
-                      <div class="task-order-item" data-task="${item.type}" draggable="true" style="display: flex; align-items: center; padding: 8px 12px; margin-bottom: 4px; background: ${item.enabled ? '#f5f5f5' : '#fff'}; border: 1px ${item.enabled ? 'solid #e0e0e0' : 'dashed #ccc'}; border-radius: 4px; cursor: move; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; ${item.enabled ? '' : 'opacity: 0.6;'}">
-                        <input type="checkbox" class="task-enabled" value="${item.type}" ${item.enabled ? 'checked' : ''} onchange="onTaskEnabledChange(this)" style="margin-right: 8px;">
-                        <span class="drag-handle" style="color: #999; margin-right: 8px;">☰</span>
-                        <span class="task-name" style="min-width: 70px;">${taskNames[item.type] || item.type}</span>
-                        <span style="margin-left: 12px; font-size: 12px; color: #666;">
+                      <div class="task-order-item" data-task="${item.type}" draggable="true" style="display: flex; flex-direction: column; padding: 8px 12px; margin-bottom: 4px; background: ${item.enabled ? '#f5f5f5' : '#fff'}; border: 1px ${item.enabled ? 'solid #e0e0e0' : 'dashed #ccc'}; border-radius: 4px; cursor: move; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; ${item.enabled ? '' : 'opacity: 0.6;'}">
+                        <div style="display: flex; align-items: center;">
+                          <input type="checkbox" class="task-enabled" value="${item.type}" ${item.enabled ? 'checked' : ''} onchange="onTaskEnabledChange(this)" style="margin-right: 8px;">
+                          <span class="drag-handle" style="color: #999; margin-right: 8px;">☰</span>
+                          <span class="task-name" style="min-width: 70px;">${taskNames[item.type] || item.type}</span>
+                        </div>
+                        <div style="margin-left: 52px; margin-top: 4px; font-size: 12px; color: #666;">
                           ${isSayGood ? `
                             <span>次数:</span>
-                            <input type="number" class="task-count" data-task="${item.type}" value="${item.count || ''}" placeholder="${defaultCount}" style="width: 40px; padding: 2px 4px; font-size: 12px;">
-                            <span style="color:#999;">(默认${defaultCount})</span>
+                            <input type="number" class="task-count" data-task="${item.type}" value="${item.count || ''}" placeholder="${defaultCount}" min="0" style="width: 50px; padding: 2px 4px; font-size: 12px;">
                           ` : `
                             <span>时长:</span>
-                            <input type="number" class="task-duration" data-task="${item.type}" value="${item.duration || ''}" placeholder="${defaultDuration}" style="width: 40px; padding: 2px 4px; font-size: 12px;">分
-                            <span style="color:#999;">(默认${defaultDuration})</span>
+                            <input type="number" class="task-duration" data-task="${item.type}" value="${item.duration || ''}" placeholder="${defaultDuration}" min="0" style="width: 50px; padding: 2px 4px; font-size: 12px;">分
                           `}
                           <span style="margin-left: 8px;">积分:</span>
-                          <input type="number" class="task-points" data-task="${item.type}" value="${item.points || ''}" placeholder="${defaultPoints}" style="width: 50px; padding: 2px 4px; font-size: 12px;">
-                          <span style="color:#999;">(默认${defaultPoints})</span>
-                        </span>
+                          <input type="number" class="task-points" data-task="${item.type}" value="${item.points || ''}" placeholder="${defaultPoints}" min="0" style="width: 50px; padding: 2px 4px; font-size: 12px;">
+                        </div>
                       </div>
                     `}).join('')}
                   </div>
@@ -1992,6 +1999,18 @@
       const showMoney = document.getElementById('edit-show-money').checked;
       const debugMode = document.getElementById('edit-debug-mode').checked;
 
+      // 验证时段配置：上午结束不超过12:00，下午开始不早于12:00
+      const morningEndMinutes = parseInt(morningEnd.split(':')[0]) * 60 + parseInt(morningEnd.split(':')[1] || 0);
+      const afternoonStartMinutes = parseInt(afternoonStart.split(':')[0]) * 60 + parseInt(afternoonStart.split(':')[1] || 0);
+      if (morningEndMinutes > 12 * 60) {
+        alert('上午结束时间不能超过12:00');
+        return;
+      }
+      if (afternoonStartMinutes < 12 * 60) {
+        alert('下午开始时间不能早于12:00');
+        return;
+      }
+
       // 收集任务顺序数据（JSON 格式）
       const taskOrder = collectTaskOrderData();
 
@@ -2185,12 +2204,12 @@
                   </div>
                   <div style="margin-bottom: 12px;">
                     <label>${durationOrCountLabel}</label>
-                    <input type="number" id="${durationOrCountId}" value="${durationOrCountValue}" style="width: 80px; padding: 6px;" placeholder="${durationOrCountPlaceholder}">
+                    <input type="number" id="${durationOrCountId}" value="${durationOrCountValue}" min="0" style="width: 100px; padding: 6px;" placeholder="${durationOrCountPlaceholder}">
                     <input type="hidden" id="${isSayGood ? 'template-duration' : 'template-count'}" value="${isSayGood ? (template.duration || 0) : (template.count || 0)}">
                   </div>
                   <div style="margin-bottom: 12px;">
                     <label>固定积分：</label>
-                    <input type="number" id="template-points" value="${template.points || 0}" style="width: 80px; padding: 6px;">
+                    <input type="number" id="template-points" value="${template.points || 0}" min="0" style="width: 100px; padding: 6px;">
                   </div>
 
                   <!-- 高级参数（默认隐藏） -->
@@ -2298,12 +2317,12 @@
       
       const data = {
         task_name: document.getElementById('template-name').value.trim(),
-        duration: parseInt(document.getElementById('template-duration').value) || 0,
-        count: parseInt(document.getElementById('template-count').value) || 0,
-        points: parseInt(document.getElementById('template-points').value) || 0,
-        max_speed: parseInt(document.getElementById('template-max-speed').value) || 0,
-        min_interval: parseInt(document.getElementById('template-min-interval').value) || 0,
-        pause_threshold: parseInt(document.getElementById('template-pause-threshold').value) || 0,
+        duration: Math.max(0, parseInt(document.getElementById('template-duration').value) || 0),
+        count: Math.max(0, parseInt(document.getElementById('template-count').value) || 0),
+        points: Math.max(0, parseInt(document.getElementById('template-points').value) || 0),
+        max_speed: Math.max(0, parseInt(document.getElementById('template-max-speed').value) || 0),
+        min_interval: Math.max(0, parseInt(document.getElementById('template-min-interval').value) || 0),
+        pause_threshold: Math.max(0, parseInt(document.getElementById('template-pause-threshold').value) || 0),
         prompt_config: promptConfig,
         updated_at: new Date().toISOString()
       };
